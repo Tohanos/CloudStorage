@@ -7,6 +7,7 @@ import java.awt.event.WindowEvent;
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Client {
 	private final Socket socket;
@@ -39,37 +40,44 @@ public class Client {
 		//JTextArea ta = new JTextArea();
 
 
-		JList<String> list = new JList<>(getFileList().toArray(new String[0]));
+		JList<String> serverFilesList = new JList<>(getFileList().toArray(new String[0]));
+		JList<String> clientFilesList = new JList<>(getLocalFileList().toArray(new String[0]));
 
 
 		JButton uploadButton = new JButton("Upload");
 		JButton downloadButton = new JButton("Download");
 		JButton removeButton = new JButton("Remove");
 
+		JPanel filesPanel = new JPanel();
 		JPanel buttonPanel = new JPanel();
 
 		buttonPanel.add(removeButton, FlowLayout.LEFT);
 		buttonPanel.add(downloadButton, FlowLayout.LEFT);
 		buttonPanel.add(uploadButton, FlowLayout.LEFT);
 
-		frame.getContentPane().add(BorderLayout.CENTER, new JScrollPane(list));
+		filesPanel.add(new JScrollPane(serverFilesList), BoxLayout.X_AXIS);
+		filesPanel.add(new JScrollPane(clientFilesList), BoxLayout.X_AXIS);
+
+		frame.getContentPane().add(filesPanel, BorderLayout.CENTER);
+
 		frame.getContentPane().add(BorderLayout.SOUTH, buttonPanel);
 
 		frame.setVisible(true);
 
 		uploadButton.addActionListener(a -> {
-			System.out.println(sendFile(list.getSelectedValue()));
+			System.out.println(sendFile(clientFilesList.getSelectedValue()));
+			serverFilesList.setListData(getFileList().toArray(new String[0]));
 		});
 
 		downloadButton.addActionListener(a -> {
-			System.out.println(downloadFile(list.getSelectedValue()));
+			System.out.println(downloadFile(serverFilesList.getSelectedValue()));
+			clientFilesList.setListData(getFileList().toArray(new String[0]));
 		});
 
 		removeButton.addActionListener(a -> {
-			System.out.println(removeFile(list.getSelectedValue()));
+			System.out.println(removeFile(serverFilesList.getSelectedValue()));
+			serverFilesList.setListData(getFileList().toArray(new String[0]));
 		});
-
-
 
 	}
 
@@ -149,6 +157,17 @@ public class Client {
 			}
 			return fileList;
 		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	private ArrayList<String> getLocalFileList() {
+		try {
+			File file = new File("client" + File.separator);
+			String[] fileNames = file.list();
+			return new ArrayList<>(Arrays.asList(fileNames));
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return null;
