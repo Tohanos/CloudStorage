@@ -11,6 +11,7 @@ public class ClientHandler implements Runnable {
 
 	public ClientHandler(Socket socket) {
 		this.socket = socket;
+		System.out.println("Client "+ socket.getInetAddress().toString() + " connected");
 	}
 
 	@Override
@@ -19,6 +20,7 @@ public class ClientHandler implements Runnable {
 		     DataInputStream in = new DataInputStream(socket.getInputStream())){
 			while (true) {
 				String command = in.readUTF();
+				System.out.println("Incomming command: " + command);
 				if ("upload".equals(command)) {
 					try {
 						File file = new File("server" + File.separator + in.readUTF());
@@ -38,12 +40,59 @@ public class ClientHandler implements Runnable {
 						out.writeUTF("ERROR");
 					}
 				} else if ("download".equals(command)) {
-					// TODO: 02.03.2021
-					// realize download
+					try {
+						File file = new File("server" + File.separator + in.readUTF());
+						if (file.exists()) {
+							out.writeLong(file.length());
+							long length = file.length();
+							out.writeLong(length);
+							FileInputStream fis = new FileInputStream(file);
+							int read = 0;
+							byte[] buffer = new byte[256];
+							while ((read = fis.read(buffer)) != -1) {
+								out.write(buffer, 0, read);
+							}
+							out.writeUTF("DONE");
+							out.flush();
+						} else {
+							out.writeUTF("File does not exist");
+						}
+					} catch (Exception e) {
+						out.writeUTF("ERROR");
+					}
+
 				} else if ("remove".equals(command)) {
-					// TODO: 02.03.2021
-					// realize remove
+					try {
+						File file = new File("server" + File.separator + in.readUTF());
+						if (file.exists()) {
+							if (file.delete()) {
+								out.writeUTF("DONE");
+							}
+						} else {
+							out.writeUTF("ERROR");
+						}
+					} catch (Exception e) {
+						out.writeUTF("ERROR");
+					}
+
+				} else if ("disconnect".equals(command)) {
+					return;
+				} else if ("filelist".equals(command)) {
+					try {
+						File file = new File("server" + File.separator);
+						String[] fileNames = file.list();
+						out.writeLong(fileNames.length);
+						for (String filename :
+								fileNames) {
+							out.writeUTF(filename);
+						}
+						out.flush();
+					} catch (Exception e) {
+						out.writeUTF("ERROR");
+					}
 				}
+
+
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
