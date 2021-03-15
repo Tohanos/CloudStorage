@@ -42,7 +42,7 @@ public class DatabaseConnector {
         return connection;
     }
 
-    public static void main(String[] argv) throws SQLException {
+    public static void main(String[] argv) throws SQLException {    //тестируем
 
         System.out.println("Testing connection to PostgreSQL JDBC");
         DatabaseConnector dbconnect = new DatabaseConnector();

@@ -9,11 +9,9 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 public class Server {
 
 	private int commandPort;
-	private int dataPort;
 
-	public Server(int commandPort, int dataPort) {
+	public Server(int commandPort) {
 		this.commandPort = commandPort;
-		this.dataPort = dataPort;
 	}
 
 	public void run () throws InterruptedException {
@@ -23,8 +21,8 @@ public class Server {
 		try {
 
 			//Add bootstrap for command transmission
-			ServerBootstrap commandBootstrap = new ServerBootstrap();
-			commandBootstrap.group(bossGroup, workerGroup)
+			ServerBootstrap serverBootstrap = new ServerBootstrap();
+			serverBootstrap.group(bossGroup, workerGroup)
 					.channel(NioServerSocketChannel.class)
 					.childHandler(new ChannelInitializer<SocketChannel>() {
 						@Override
@@ -35,29 +33,12 @@ public class Server {
 					.option(ChannelOption.SO_BACKLOG, 128)
 					.childOption(ChannelOption.SO_KEEPALIVE, true);
 
+			System.out.println(" Server started");
 			// Bind and start to accept incoming connections.
-			ChannelFuture commandFuture = commandBootstrap.bind(commandPort).sync();
-
-			// Add new bootstrap for data transmission
-			ServerBootstrap dataBootstrap = new ServerBootstrap();
-
-			dataBootstrap.group(bossGroup, workerGroup)
-					.channel(NioServerSocketChannel.class)
-					.childHandler(new ChannelInitializer<SocketChannel>() {
-						@Override
-						public void initChannel(SocketChannel ch) {
-							ch.pipeline().addLast(new DataHandler());
-						}
-					})
-					.option(ChannelOption.SO_BACKLOG, 128)
-					.childOption(ChannelOption.SO_KEEPALIVE, true);
-
-			// Bind and start to accept incoming connections.
-			ChannelFuture dataFuture = commandBootstrap.bind(dataPort).sync();
+			ChannelFuture commandFuture = serverBootstrap.bind(commandPort).sync();
 
 			// Wait until the server socket is closed.
 			commandFuture.channel().closeFuture().sync();
-			dataFuture.channel().closeFuture().sync();
 
 		} finally {
 			workerGroup.shutdownGracefully();
@@ -66,6 +47,6 @@ public class Server {
 	}
 
 	public static void main(String[] args) throws InterruptedException {
-		new Server(1234, 1235).run();
+		new Server(1234).run();
 	}
 }

@@ -1,6 +1,7 @@
 package server;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.group.ChannelGroup;
@@ -15,30 +16,35 @@ import java.util.List;
 
 public class CommandHandler extends ChannelInboundHandlerAdapter {
 
+    private StateMachine serverState;
+
     @Override
     public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        super.channelRegistered(ctx);
+        serverState = new StateMachine(ctx.channel());
+
+        serverState.setPhase(StateMachine.Phase.CONNECT);
     }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        ChannelGroup clients = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
         ByteBuf in = (ByteBuf) msg;
-        List<String> command = new ArrayList<>();
+        List<String> command;
+        List<String> answer;
         try {
             while (in.isReadable()) {
                 StringBuilder sb = new StringBuilder(in.readCharSequence(in.readableBytes(), Charset.defaultCharset()));
                 System.out.println(sb);
-                command = Arrays.asList(sb.toString().replaceAll("[^A-Za-z0-9]", "").split(" ").clone());
-                if (command != null) {
-                    if ("auth".equals(command.get(0))) {
-
-
-
+                command = Arrays.asList(sb.toString().replace("\r\n", "").split(" ").clone());
+                if (command.get(0).length() > 0) {
+                    answer = serverState.parseCommand(command, ctx.channel());
+                    ByteBuf out = ctx.alloc().buffer(51);
+                    for (String s : answer) {
+                        out.writeCharSequence(s.subSequence(0, s.length()), Charset.defaultCharset());
+                        out.writeChar(' ');
                     }
+                    ChannelFuture f = ctx.writeAndFlush(out);
                 }
-
             }
         } finally {
             ReferenceCountUtil.release(msg);

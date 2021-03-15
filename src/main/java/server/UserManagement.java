@@ -9,6 +9,8 @@ public class UserManagement {
     private final static String SELECT_ALL_USERS = "SELECT * FROM cloudstorage.users;";
     private final static String SELECT_LAST_USER = "SELECT * FROM cloudstorage.users WHERE userid = " +
                                                     "(SELECT MAX (userid) FROM cloudstorage.users);";
+    private final static String SELECT_USER_BY_ID = "SELECT * FROM cloudstorage.users WHERE userid = ?;";
+
     private final static String INSERT_USER = "INSERT INTO cloudstorage.users VALUES " +
                                                 "(DEFAULT, ?, ?, NOW(), ?);";
     private final static String CHANGE_NAME = "UPDATE cloudstorage.users SET username = ? WHERE userid = ?";
@@ -20,13 +22,8 @@ public class UserManagement {
     private final static String DATEADD_FIELD = "dateadd";
     private final static String ROOTDIR_FIELD = "rootdir";
 
-    private static List<User> users;
-
-    public static void readAllUsers () {
-
-        if (users == null) {
-            users = new ArrayList<>();
-        }
+    public static List<User> readAllUsers () {
+        List<User> users = new ArrayList<>();
 
         Connection conn = new DatabaseConnector().getConnection();
         Statement stmt = null;
@@ -51,9 +48,12 @@ public class UserManagement {
             System.exit(0);
         }
         System.out.println(" Data Retrieved Successfully ..");
+        return users;
     }
 
-    public static void createNewUser (String name, String password, String rootDir) {
+    public static User createNewUser (String name, String password, String rootDir) {
+
+        User user = null;
 
         Connection conn = new DatabaseConnector().getConnection();
         if (!exists(name)) {
@@ -69,12 +69,12 @@ public class UserManagement {
                     stmt = conn.createStatement();
                     try (ResultSet rs = stmt.executeQuery(SELECT_LAST_USER)) {
                         if (rs.next()) {
-                            users.add(new User(
+                            user = new User(
                                     rs.getInt(ID_FIELD),
                                     rs.getString(NAME_FIELD),
                                     rs.getString(PASSWORD_FIELD),
                                     rs.getDate(DATEADD_FIELD),
-                                    rs.getString(ROOTDIR_FIELD)));
+                                    rs.getString(ROOTDIR_FIELD));
                         }
                     }
                 }
@@ -86,10 +86,10 @@ public class UserManagement {
             }
             System.out.println(" User created Successfully ..");
         }
-
+        return user;
     }
 
-    public static boolean changeUserName (String name, int id) {
+    public static boolean changeUserName (String name, User user) {
 
         Connection conn = new DatabaseConnector().getConnection();
         if (!exists(name)) {
@@ -98,22 +98,14 @@ public class UserManagement {
                 conn.setAutoCommit(true);
                 PreparedStatement pst = conn.prepareStatement(CHANGE_NAME);
                 pst.setString(1, name);
-                pst.setString(2, String.valueOf(id));
+                pst.setString(2, String.valueOf(user.getUserId()));
                 int rows = pst.executeUpdate();
                 if (rows > 0) {
-                    stmt = conn.createStatement();
-                    try (ResultSet rs = stmt.executeQuery(SELECT_LAST_USER)) {
-                        if (rs.next()) {
-                            for (User user : users) {
-                                if (user.getUserId() == id) {
-                                    System.out.print(" User " + user.getName() + " changed name to ");
-                                    user.setName(name);
-                                    System.out.println(name + " successfully ..");
-                                    return true;
-                                }
-                            }
-                        }
-                    }
+                    System.out.print(" User " + user.getName() + " changed name to ");
+                    user.setName(name);
+                    System.out.println(name + " successfully ..");
+                    conn.close();
+                    return true;
                 }
                 conn.close();
             } catch ( Exception e ) {
@@ -124,30 +116,21 @@ public class UserManagement {
         return false;
     }
 
-    public static boolean changeUserPassword(String password, int id) {
+    public static boolean changeUserPassword(String password, User user) {
 
         Connection conn = new DatabaseConnector().getConnection();
-        Statement stmt = null;
         try {
             conn.setAutoCommit(true);
             PreparedStatement pst = conn.prepareStatement(CHANGE_PASSWORD);
             pst.setString(1, password);
-            pst.setString(2, String.valueOf(id));
+            pst.setString(2, String.valueOf(user.getUserId()));
             int rows = pst.executeUpdate();
             if (rows > 0) {
-                stmt = conn.createStatement();
-                try (ResultSet rs = stmt.executeQuery(SELECT_LAST_USER)) {
-                    if (rs.next()) {
-                        for (User user : users) {
-                            if (user.getUserId() == id) {
-                                user.setPassword(password);
-                                System.out.println(" Password for user " + user.getName() +
-                                        " changed successfully ..");
-                                return true;
-                            }
-                        }
-                    }
-                }
+                user.setPassword(password);
+                System.out.println(" Password for user " + user.getName() +
+                        " changed successfully ..");
+                conn.close();
+                return true;
             }
             conn.close();
         } catch (Exception e) {
@@ -159,16 +142,37 @@ public class UserManagement {
     }
 
     public static boolean exists (String name) {
+        List<User> users = readAllUsers();
         for (User user : users) {
-            if (user.getName() == name) return true;
+            if (user.getName().equals(name)) return true;
         }
         return false;
     }
 
+    public static boolean checkPassword (String name, String password) {
+        List<User> users = readAllUsers();
+        for (User user : users) {
+            if (user.getName().equals(name) && user.getPassword().equals(password)) return true;
+        }
+        return false;
+    }
+
+    public static User getUser (String name) {
+        List<User> users = readAllUsers();
+        for (User user : users) {
+            if (user.getName().equals(name)) {
+                return user;
+            }
+        }
+        return null;
+    }
+
     public static void main(String[] args) throws SQLException {
 
-        UserManagement.readAllUsers();
+        //UserManagement.readAllUsers();
         UserManagement.createNewUser("Petya", "3333", "/User3");
+        System.out.println(UserManagement.checkPassword("Petya", "2222"));
+        System.out.println(UserManagement.checkPassword("Petya", "3333"));
 
     }
 
