@@ -9,9 +9,11 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 public class Server {
 
 	private int commandPort;
+	private int dataPort;
 
-	public Server(int commandPort) {
+	public Server(int commandPort, int dataPort) {
 		this.commandPort = commandPort;
+		this.dataPort = dataPort;
 	}
 
 	public void run () throws InterruptedException {
@@ -27,15 +29,22 @@ public class Server {
 					.childHandler(new ChannelInitializer<SocketChannel>() {
 						@Override
 						public void initChannel(SocketChannel ch) {
-							ch.pipeline().addLast(new CommandHandler());
+							if (ch.localAddress().getPort() == commandPort) {
+								ch.pipeline().addLast(new CommandHandler());
+							}
+							if (ch.localAddress().getPort() == dataPort) {
+								ch.pipeline().addLast(new DataHandler());
+							}
 						}
 					})
 					.option(ChannelOption.SO_BACKLOG, 128)
 					.childOption(ChannelOption.SO_KEEPALIVE, true);
 
-			System.out.println(" Server started");
+
 			// Bind and start to accept incoming connections.
 			ChannelFuture commandFuture = serverBootstrap.bind(commandPort).sync();
+			ChannelFuture dataFuture = serverBootstrap.bind(dataPort).sync();
+			System.out.println(" Server started");
 
 			// Wait until the server socket is closed.
 			commandFuture.channel().closeFuture().sync();
@@ -46,7 +55,9 @@ public class Server {
 		}
 	}
 
+
+
 	public static void main(String[] args) throws InterruptedException {
-		new Server(1234).run();
+		new Server(1234, 1235).run();
 	}
 }
