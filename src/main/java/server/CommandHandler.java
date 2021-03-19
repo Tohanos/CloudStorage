@@ -4,14 +4,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.concurrent.GlobalEventExecutor;
-
-import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -33,7 +27,6 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
         List<String> command;
         List<String> answer;
 
-        //System.out.println(port);
 
         try {
             while (in.isReadable()) {
