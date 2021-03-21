@@ -1,4 +1,4 @@
-package server;
+package User;
 
 import java.net.URL;
 import java.sql.Date;

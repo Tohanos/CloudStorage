@@ -10,14 +10,22 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class Client {
-	private final Socket socket;
-	private final DataInputStream in;
-	private final DataOutputStream out;
+	private final Socket commandSocket;
+	private final Socket dataSocket;
+	private final DataInputStream commandInputStream;
+	private final DataOutputStream commandOutputStream;
+	private final ObjectInputStream dataInputStream;
+	private final ObjectOutputStream dataOutputStream;
+
 
 	public Client() throws IOException {
-		socket = new Socket("localhost", 1235);
-		in = new DataInputStream(socket.getInputStream());
-		out = new DataOutputStream(socket.getOutputStream());
+		commandSocket = new Socket("localhost", 1234);
+		dataSocket = new Socket("localhost", 1235);
+		commandInputStream = new DataInputStream(commandSocket.getInputStream());
+		commandOutputStream = new DataOutputStream(commandSocket.getOutputStream());
+		dataInputStream = new ObjectInputStream(dataSocket.getInputStream());
+		dataOutputStream = new ObjectOutputStream(dataSocket.getOutputStream());
+
 		runClient();
 	}
 
@@ -29,7 +37,7 @@ public class Client {
 			@Override
 			public void windowClosing(WindowEvent e) {
 				try {
-					out.writeUTF("disconnect");
+					commandOutputStream.writeUTF("disconnect");
 				} catch (IOException ioException) {
 					ioException.printStackTrace();
 				}
@@ -85,18 +93,18 @@ public class Client {
 		try {
 			File file = new File("client" + File.separator + filename);
 			if (file.exists()) {
-				out.writeUTF("upload");
-				out.writeUTF(filename);
+				commandOutputStream.writeUTF("upload");
+				commandOutputStream.writeUTF(filename);
 				long length = file.length();
-				out.writeLong(length);
+				commandOutputStream.writeLong(length);
 				FileInputStream fis = new FileInputStream(file);
 				int read = 0;
 				byte[] buffer = new byte[256];
 				while ((read = fis.read(buffer)) != -1) {
-					out.write(buffer, 0, read);
+					commandOutputStream.write(buffer, 0, read);
 				}
-				out.flush();
-				String status = in.readUTF();
+				commandOutputStream.flush();
+				String status = commandInputStream.readUTF();
 				return status;
 			} else {
 				return "File is not exists";
@@ -111,18 +119,18 @@ public class Client {
 		try {
 			File file = new File("client" + File.separator + filename);
 			if(!file.exists()) {
-				out.writeUTF("download");
-				out.writeUTF(filename);
-				out.flush();
-				long length = in.readLong();
+				commandOutputStream.writeUTF("download");
+				commandOutputStream.writeUTF(filename);
+				commandOutputStream.flush();
+				long length = commandInputStream.readLong();
 				FileOutputStream fos = new FileOutputStream(file);
 				byte[] buffer = new byte[256];
 				for (int i = 0; i < (length + 255) / 256; i++) {
-					int read = in.read(buffer);
+					int read = commandInputStream.read(buffer);
 					fos.write(buffer, 0, read);
 				}
 				fos.close();
-				String status = in.readUTF();
+				String status = commandInputStream.readUTF();
 				return status;
 			} else {
 				return "File exists!";
@@ -135,10 +143,10 @@ public class Client {
 
 	private String removeFile(String filename) {
 		try {
-			out.writeUTF("remove");
-			out.writeUTF(filename);
-			out.flush();
-			String status = in.readUTF();
+			commandOutputStream.writeUTF("remove");
+			commandOutputStream.writeUTF(filename);
+			commandOutputStream.flush();
+			String status = commandInputStream.readUTF();
 			return status;
 
 		} catch (IOException e) {
@@ -150,10 +158,10 @@ public class Client {
 	private ArrayList<String> getFileList () {
 		ArrayList<String> fileList = new ArrayList<>();
 		try {
-			out.writeUTF("filelist");
-			long fileNumber = in.readLong();
+			commandOutputStream.writeUTF("filelist");
+			long fileNumber = commandInputStream.readLong();
 			for (int i = 0; i < fileNumber; i++) {
-				fileList.add(in.readUTF());
+				fileList.add(commandInputStream.readUTF());
 			}
 			return fileList;
 		} catch (IOException e) {

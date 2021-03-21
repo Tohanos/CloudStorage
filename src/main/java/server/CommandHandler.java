@@ -15,7 +15,8 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        serverState = new StateMachine(ctx.channel());
+        serverState = new StateMachine();
+        serverState.setCommandChannel(ctx.channel());
 
         serverState.setPhase(StateMachine.Phase.CONNECT);
     }
@@ -34,7 +35,7 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
                 System.out.println(sb);
                 command = Arrays.asList(sb.toString().replace("\r\n", "").split(" ").clone());
                 if (command.get(0).length() > 0) {
-                    answer = serverState.parseCommand(command, ctx.channel());
+                    answer = serverState.parseCommand(command);
                     ByteBuf out = ctx.alloc().buffer(51);
                     for (String s : answer) {
                         out.writeCharSequence(s.subSequence(0, s.length()), Charset.defaultCharset());

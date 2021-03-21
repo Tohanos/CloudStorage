@@ -1,5 +1,7 @@
 package server;
 
+import User.User;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -161,6 +163,16 @@ public class UserManagement {
         List<User> users = readAllUsers();
         for (User user : users) {
             if (user.getName().equals(name)) {
+                return user;
+            }
+        }
+        return null;
+    }
+
+    public static User getUser (int userId) {
+        List<User> users = readAllUsers();
+        for (User user : users) {
+            if (user.getUserId() == userId) {
                 return user;
             }
         }

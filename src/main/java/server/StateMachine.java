@@ -1,5 +1,6 @@
 package server;
 
+import User.User;
 import io.netty.channel.Channel;
 
 import java.util.ArrayList;
@@ -23,33 +24,50 @@ public class StateMachine{
 
     private State currentState;
 
-    private Phase currentPhase;
-    private Channel channel;
+    private User user;
 
-    public StateMachine(Channel channel) {
-        this.channel = channel;
+    private Phase currentPhase;
+    private Channel commandChannel;
+    private Channel dataChannel;
+
+    public StateMachine() {
         currentState = State.IDLE;
+    }
+
+    public void setCommandChannel(Channel commandChannel) {
+        this.commandChannel = commandChannel;
+    }
+
+    public void setDataChannel(Channel dataChannel) {
+        this.dataChannel = dataChannel;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 
     public void setState(State state) {
         this.currentState = state;
     }
 
-    public State getState() {
-        return currentState;
-    }
-
     public void setPhase(Phase phase) {
         this.currentPhase = phase;
     }
 
-    public Channel getChannel() {
-        return channel;
+    public Channel getCommandChannel() {
+        return commandChannel;
     }
 
-    public List<String> parseCommand(List<String> commands, Channel channel) {
+    public User getUser() {
+        return user;
+    }
+
+    public State getState() {
+        return currentState;
+    }
+
+    public List<String> parseCommand(List<String> commands) {
         List<String> answer = new ArrayList<>();
-        User user = null;
 
         switch (currentState) {
             case IDLE -> {
@@ -61,9 +79,10 @@ public class StateMachine{
             if (commands.get(0).equals("auth")) currentPhase = Phase.AUTHORIZE;
         }
         if (currentPhase == Phase.AUTHORIZE) {
+            user = null;
             currentPhase = Phase.DECLINE;
             if (commands.size() > 2) {
-                if (UserManagement.exists(commands.get(1))) {                                           //В пуле команд под индексом 1 идёт имя пользователя
+                if (UserManagement.exists(commands.get(1))) {            //В пуле команд под индексом 1 идёт имя пользователя
                     user = UserManagement.getUser(commands.get(1));
                     if (user.getPassword().equals(commands.get(2))) {    //В пуле команд под индексом 2 идёт введённый пароль
                         currentPhase = Phase.ACCEPT;
@@ -73,7 +92,7 @@ public class StateMachine{
         }
         if (currentPhase == Phase.ACCEPT) {
             if (user != null) {
-                UsersPool.add(channel, user);
+                UsersPool.add(commandChannel, user);
                 answer.add("OK");
                 currentPhase = Phase.WORK;
             } else {
