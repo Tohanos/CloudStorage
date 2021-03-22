@@ -18,7 +18,9 @@ public class Client {
 	private final ObjectOutputStream dataOutputStream;
 
 
-	public Client() throws IOException {
+
+
+	public Client() throws IOException, ClassNotFoundException {
 		commandSocket = new Socket("localhost", 1234);
 		dataSocket = new Socket("localhost", 1235);
 		commandInputStream = new DataInputStream(commandSocket.getInputStream());
@@ -30,6 +32,10 @@ public class Client {
 	}
 
 	private void runClient() {
+
+
+
+
 		JFrame frame = new JFrame("Cloud Storage");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setSize(400, 300);
@@ -182,7 +188,7 @@ public class Client {
 	}
 
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, ClassNotFoundException {
 		new Client();
 	}
 }

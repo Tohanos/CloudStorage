@@ -1,6 +1,6 @@
 package server;
 
-import User.User;
+import user.User;
 import io.netty.channel.Channel;
 
 import java.util.Map;

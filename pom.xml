@@ -41,6 +41,12 @@
             <version>4.1.60.Final</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.dlsc.formsfx</groupId>
+            <artifactId>formsfx-core</artifactId>
+            <version>11.3.2</version>
+        </dependency>
+
     </dependencies>
 
 </project>

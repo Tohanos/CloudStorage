@@ -1,6 +1,5 @@
-package User;
+package user;
 
-import java.net.URL;
 import java.sql.Date;
 
 public class User {

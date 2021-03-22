@@ -16,6 +16,7 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
         serverState = new StateMachine();
+        StateMachinesPool.add(serverState);
         serverState.setCommandChannel(ctx.channel());
 
         serverState.setPhase(StateMachine.Phase.CONNECT);

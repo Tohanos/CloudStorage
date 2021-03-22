@@ -1,6 +1,6 @@
-package FileAssembler;
+package fileassembler;
 
-import User.User;
+import user.User;
 import server.UserManagement;
 
 import java.io.IOException;

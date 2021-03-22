@@ -1,6 +1,6 @@
 package server;
 
-import User.User;
+import user.User;
 import io.netty.channel.Channel;
 
 import java.util.ArrayList;
@@ -19,7 +19,8 @@ public class StateMachine{
         ACCEPT,
         DECLINE,
         WORK,
-        DISCONNECT
+        DISCONNECT,
+        DONE
     }
 
     private State currentState;
@@ -69,49 +70,75 @@ public class StateMachine{
     public List<String> parseCommand(List<String> commands) {
         List<String> answer = new ArrayList<>();
 
-        switch (currentState) {
-            case IDLE -> {
+        while (currentPhase != Phase.DONE) {
 
-            }
-        }
-
-        if (currentPhase == Phase.CONNECT) {
-            if (commands.get(0).equals("auth")) currentPhase = Phase.AUTHORIZE;
-        }
-        if (currentPhase == Phase.AUTHORIZE) {
-            user = null;
-            currentPhase = Phase.DECLINE;
-            if (commands.size() > 2) {
-                if (UserManagement.exists(commands.get(1))) {            //В пуле команд под индексом 1 идёт имя пользователя
-                    user = UserManagement.getUser(commands.get(1));
-                    if (user.getPassword().equals(commands.get(2))) {    //В пуле команд под индексом 2 идёт введённый пароль
-                        currentPhase = Phase.ACCEPT;
+            switch (currentState) {
+                case IDLE -> {
+                    if (currentPhase == Phase.CONNECT) {
+                        if (commands.get(0).equals("auth")) currentPhase = Phase.AUTHORIZE;
                     }
+                    if (currentPhase == Phase.AUTHORIZE) {
+                        user = null;
+                        currentPhase = Phase.DECLINE;
+                        if (commands.size() > 2) {
+                            if (UserManagement.exists(commands.get(1))) {            //В пуле команд под индексом 1 идёт имя пользователя
+                                user = UserManagement.getUser(commands.get(1));
+                                if (user.getPassword().equals(commands.get(2))) {    //В пуле команд под индексом 2 идёт введённый пароль
+                                    currentPhase = Phase.ACCEPT;
+                                }
+                            }
+                        }
+                    }
+                    if (currentPhase == Phase.ACCEPT) {
+                        if (user != null) {
+                            UsersPool.add(commandChannel, user);
+                            answer.add(String.valueOf(user.getUserId()));
+                            currentPhase = Phase.WORK;
+                        } else {
+                            currentPhase = Phase.DONE;
+                        }
+                    }
+                    if (currentPhase == Phase.DECLINE) {
+                        answer.add("DECLINE");
+                        currentPhase = Phase.CONNECT;
+                    }
+                    if (currentPhase == Phase.WORK) {
+                        switch (commands.get(0)) {
+                            case "exit":
+                                currentPhase = Phase.DISCONNECT;
+                                break;
+                            case "upload":
+                                currentState = State.RECIEVING;
+                                break;
+                            case "download":
+                                currentState = State.TRANSMITTING;
+                                break;
+                        }
+
+                    }
+                    if (currentPhase == Phase.DONE) {
+                        answer.add("OK");
+
+                    }
+
+                }
+                case RECIEVING -> {
+
+
+
+                }
+                case TRANSMITTING -> {
+
                 }
             }
-        }
-        if (currentPhase == Phase.ACCEPT) {
-            if (user != null) {
-                UsersPool.add(commandChannel, user);
-                answer.add("OK");
-                currentPhase = Phase.WORK;
-            } else {
-                currentPhase = Phase.CONNECT;
+
+
+            if (currentPhase == Phase.DISCONNECT) {
+                answer.add("DISCONNECT");
+
             }
         }
-        if (currentPhase == Phase.DECLINE) {
-            answer.add("DECLINE");
-            currentPhase = Phase.CONNECT;
-        }
 
-        if (currentPhase == Phase.WORK) {
-
-        }
-
-        if (currentPhase == Phase.DISCONNECT) {
-            answer.add("DISCONNECT");
-
-        }
         return answer;
     }
 }

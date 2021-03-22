@@ -1,6 +1,6 @@
 package server;
 
-import User.User;
+import user.User;
 import io.netty.channel.Channel;
 
 import java.util.LinkedList;
@@ -9,11 +9,11 @@ import java.util.List;
 public class StateMachinesPool {
     private static List<StateMachine> pool;
 
-    public static void add() {
+    public static void add(StateMachine stateMachine) {
         if (pool == null) {
             pool = new LinkedList<>();
         }
-        pool.add(new StateMachine());
+        pool.add(stateMachine);
     }
 
     public static void remove(StateMachine stateMachine) {

@@ -1,6 +1,6 @@
 package server;
 
-import User.User;
+import user.User;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -103,7 +103,7 @@ public class UserManagement {
                 pst.setString(2, String.valueOf(user.getUserId()));
                 int rows = pst.executeUpdate();
                 if (rows > 0) {
-                    System.out.print(" User " + user.getName() + " changed name to ");
+                    System.out.print("user " + user.getName() + " changed name to ");
                     user.setName(name);
                     System.out.println(name + " successfully ..");
                     conn.close();

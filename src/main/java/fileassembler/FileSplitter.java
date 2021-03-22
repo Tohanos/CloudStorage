@@ -1,6 +1,4 @@
-package FileAssembler;
-
-import User.User;
+package fileassembler;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
