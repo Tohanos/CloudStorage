@@ -1,5 +1,7 @@
 package client;
 
+import server.UserManagement;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
@@ -17,10 +19,23 @@ public class Client {
 	private final ObjectInputStream dataInputStream;
 	private final ObjectOutputStream dataOutputStream;
 
+	private String userName;
+	private String password;
+	private int userId;
 
+	enum ClientState {
+		AUTH,
+		WORK,
+		CLOSE
+	}
 
+	ClientState state;
+	JFrame authWindowFrame;
+	JFrame mainWindowFrame;
 
 	public Client() throws IOException, ClassNotFoundException {
+		state = ClientState.AUTH;
+
 		commandSocket = new Socket("localhost", 1234);
 		dataSocket = new Socket("localhost", 1235);
 		commandInputStream = new DataInputStream(commandSocket.getInputStream());
@@ -28,71 +43,185 @@ public class Client {
 		dataInputStream = new ObjectInputStream(dataSocket.getInputStream());
 		dataOutputStream = new ObjectOutputStream(dataSocket.getOutputStream());
 
-		runClient();
+		while (state != ClientState.CLOSE) {
+			switch (state) {
+				case AUTH -> {
+					runAuthorization();
+				}
+				case WORK -> {
+					runClient();
+				}
+			}
+		}
+		commandOutputStream.writeUTF("disconnect");
+		try {
+			commandSocket.close();
+			dataSocket.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.exit(0);
+	}
+
+	private void runAuthorization() {
+		if (authWindowFrame == null) {
+			authWindowFrame = new JFrame("Cloud Storage Authorization");
+			authWindowFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+			authWindowFrame.setSize(400, 300);
+			authWindowFrame.addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent e) {
+					state = ClientState.CLOSE;
+					super.windowClosing(e);
+				}
+			});
+
+			JLabel message = new JLabel("Enter login and password");
+			JPanel mainPanel = new JPanel();
+			JLabel loginText = new JLabel("Login:");
+			JLabel passwordText = new JLabel("Password:");
+			JTextField loginField = new JTextField("", 15);
+			JPasswordField passwordField = new JPasswordField("", 15);
+
+//			loginField.setSize(100, 15);
+//			passwordField.setSize(100, 15);
+
+			SpringLayout layout = new SpringLayout();
+			mainPanel.setLayout(layout);
+			mainPanel.add(loginField);
+			mainPanel.add(loginText);
+			mainPanel.add(passwordField);
+			mainPanel.add(passwordText);
+
+			layout.getConstraints(loginText).setX(Spring.constant(5));
+			layout.getConstraints(loginText).setY(Spring.constant(5));
+			layout.getConstraints(loginField).setX(Spring.constant(105));
+			layout.getConstraints(loginField).setY(Spring.constant(5));
+			layout.getConstraints(passwordText).setX(Spring.constant(5));
+			layout.getConstraints(passwordText).setY(Spring.constant(15));
+			layout.getConstraints(passwordField).setX(Spring.constant(105));
+			layout.getConstraints(passwordField).setY(Spring.constant(15));
+
+			authWindowFrame.getContentPane().add(BorderLayout.NORTH, message);
+			authWindowFrame.getContentPane().add(BorderLayout.CENTER, mainPanel);
+
+
+
+			JButton newUserButton = new JButton("New user");
+			JButton loginButton = new JButton("Login");
+			JButton exitButton = new JButton("Exit");
+
+			JPanel buttonPanel = new JPanel();
+			buttonPanel.add(newUserButton);
+			buttonPanel.add(loginButton);
+			buttonPanel.add(exitButton);
+			authWindowFrame.getContentPane().add(BorderLayout.SOUTH, buttonPanel);
+
+			authWindowFrame.setVisible(true);
+
+			newUserButton.addActionListener(a -> {
+
+			});
+
+			loginButton.addActionListener(a -> {
+				String login = loginField.getText();
+				String password = String.valueOf(passwordField.getPassword());
+				if (login.length() <= 0 || password.length() <= 0) {
+					message.setText("Login or password cannot be blank!");
+				} else {
+					int result = authorize(login, password);
+					if (result != 0) {
+						userId = result;
+						userName = loginField.getText();
+					} else {
+						message.setText("Invalid password!!!");
+					}
+				}
+			});
+
+			exitButton.addActionListener(a -> {
+				state = ClientState.CLOSE;
+			});
+		}
+
 	}
 
 	private void runClient() {
 
-
-
-
-		JFrame frame = new JFrame("Cloud Storage");
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setSize(400, 300);
-		frame.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent e) {
-				try {
-					commandOutputStream.writeUTF("disconnect");
-				} catch (IOException ioException) {
-					ioException.printStackTrace();
+		if (mainWindowFrame == null) {
+			mainWindowFrame = new JFrame("Cloud Storage");
+			mainWindowFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			mainWindowFrame.setSize(400, 300);
+			mainWindowFrame.addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent e) {
+					try {
+						commandOutputStream.writeUTF("disconnect");
+					} catch (IOException ioException) {
+						ioException.printStackTrace();
+					}
+					super.windowClosing(e);
 				}
-				super.windowClosing(e);
+			});
+
+			//JTextArea ta = new JTextArea();
+
+
+			JList<String> serverFilesList = new JList<>(getFileList().toArray(new String[0]));
+			JList<String> clientFilesList = new JList<>(getLocalFileList().toArray(new String[0]));
+
+
+			JButton uploadButton = new JButton("Upload");
+			JButton downloadButton = new JButton("Download");
+			JButton removeButton = new JButton("Remove");
+
+			JPanel filesPanel = new JPanel();
+			JPanel buttonPanel = new JPanel();
+
+			buttonPanel.add(removeButton, FlowLayout.LEFT);
+			buttonPanel.add(downloadButton, FlowLayout.LEFT);
+			buttonPanel.add(uploadButton, FlowLayout.LEFT);
+
+			filesPanel.add(new JScrollPane(serverFilesList), BoxLayout.X_AXIS);
+			filesPanel.add(new JScrollPane(clientFilesList), BoxLayout.X_AXIS);
+
+			mainWindowFrame.getContentPane().add(filesPanel, BorderLayout.CENTER);
+
+			mainWindowFrame.getContentPane().add(BorderLayout.SOUTH, buttonPanel);
+
+			mainWindowFrame.setVisible(true);
+
+			uploadButton.addActionListener(a -> {
+				System.out.println(sendFile(clientFilesList.getSelectedValue()));
+				serverFilesList.setListData(getFileList().toArray(new String[0]));
+			});
+
+			downloadButton.addActionListener(a -> {
+				System.out.println(downloadFile(serverFilesList.getSelectedValue()));
+				clientFilesList.setListData(getFileList().toArray(new String[0]));
+			});
+
+			removeButton.addActionListener(a -> {
+				System.out.println(removeFile(serverFilesList.getSelectedValue()));
+				serverFilesList.setListData(getFileList().toArray(new String[0]));
+			});
+		}
+
+
+	}
+
+	private int authorize (String name, String password) {
+		String status = "";
+		try {
+			commandOutputStream.writeUTF("auth " + name + " " + password);
+			status = commandInputStream.readUTF();
+			if (!status.equals("DECLINE")) {
+				return 0;
 			}
-		});
-
-		//JTextArea ta = new JTextArea();
-
-
-		JList<String> serverFilesList = new JList<>(getFileList().toArray(new String[0]));
-		JList<String> clientFilesList = new JList<>(getLocalFileList().toArray(new String[0]));
-
-
-		JButton uploadButton = new JButton("Upload");
-		JButton downloadButton = new JButton("Download");
-		JButton removeButton = new JButton("Remove");
-
-		JPanel filesPanel = new JPanel();
-		JPanel buttonPanel = new JPanel();
-
-		buttonPanel.add(removeButton, FlowLayout.LEFT);
-		buttonPanel.add(downloadButton, FlowLayout.LEFT);
-		buttonPanel.add(uploadButton, FlowLayout.LEFT);
-
-		filesPanel.add(new JScrollPane(serverFilesList), BoxLayout.X_AXIS);
-		filesPanel.add(new JScrollPane(clientFilesList), BoxLayout.X_AXIS);
-
-		frame.getContentPane().add(filesPanel, BorderLayout.CENTER);
-
-		frame.getContentPane().add(BorderLayout.SOUTH, buttonPanel);
-
-		frame.setVisible(true);
-
-		uploadButton.addActionListener(a -> {
-			System.out.println(sendFile(clientFilesList.getSelectedValue()));
-			serverFilesList.setListData(getFileList().toArray(new String[0]));
-		});
-
-		downloadButton.addActionListener(a -> {
-			System.out.println(downloadFile(serverFilesList.getSelectedValue()));
-			clientFilesList.setListData(getFileList().toArray(new String[0]));
-		});
-
-		removeButton.addActionListener(a -> {
-			System.out.println(removeFile(serverFilesList.getSelectedValue()));
-			serverFilesList.setListData(getFileList().toArray(new String[0]));
-		});
-
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return Integer.parseInt(status);
 	}
 
 	private String sendFile(String filename) {
