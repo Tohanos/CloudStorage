@@ -8,14 +8,15 @@ public class User {
     private String password;
     private Date dateAdd;
     private String rootDir;
-    //private userURL;
+    private String userRights;
 
-    public User(int userId, String name, String password, Date dateAdd, String rootDir) {
+    public User(int userId, String name, String password, Date dateAdd, String rootDir, String userRights) {
         this.userId = userId;
         this.name = name;
         this.password = password;
         this.dateAdd = dateAdd;
         this.rootDir = rootDir;
+        this.userRights = userRights;
     }
 
     public String getName() {
@@ -36,6 +37,10 @@ public class User {
 
     public int getUserId() {
         return userId;
+    }
+
+    public String getUserRights() {
+        return userRights;
     }
 
     public void setName(String name) {

@@ -1,7 +1,5 @@
 package client;
 
-import server.UserManagement;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
@@ -98,9 +96,9 @@ public class Client {
 			layout.getConstraints(loginField).setX(Spring.constant(105));
 			layout.getConstraints(loginField).setY(Spring.constant(5));
 			layout.getConstraints(passwordText).setX(Spring.constant(5));
-			layout.getConstraints(passwordText).setY(Spring.constant(15));
+			layout.getConstraints(passwordText).setY(Spring.constant(25));
 			layout.getConstraints(passwordField).setX(Spring.constant(105));
-			layout.getConstraints(passwordField).setY(Spring.constant(15));
+			layout.getConstraints(passwordField).setY(Spring.constant(25));
 
 			authWindowFrame.getContentPane().add(BorderLayout.NORTH, message);
 			authWindowFrame.getContentPane().add(BorderLayout.CENTER, mainPanel);

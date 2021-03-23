@@ -14,7 +14,7 @@ public class UserManagement {
     private final static String SELECT_USER_BY_ID = "SELECT * FROM cloudstorage.users WHERE userid = ?;";
 
     private final static String INSERT_USER = "INSERT INTO cloudstorage.users VALUES " +
-                                                "(DEFAULT, ?, ?, NOW(), ?);";
+                                                "(DEFAULT, ?, ?, NOW(), ?, ?);";
     private final static String CHANGE_NAME = "UPDATE cloudstorage.users SET username = ? WHERE userid = ?";
     private final static String CHANGE_PASSWORD = "UPDATE cloudstorage.users SET userpassword = ? WHERE userid = ?";
 
@@ -23,6 +23,7 @@ public class UserManagement {
     private final static String PASSWORD_FIELD = "userpassword";
     private final static String DATEADD_FIELD = "dateadd";
     private final static String ROOTDIR_FIELD = "rootdir";
+    private final static String RIGHTS_FIELD = "userrights";
 
     public static List<User> readAllUsers () {
         List<User> users = new ArrayList<>();
@@ -38,8 +39,9 @@ public class UserManagement {
                 String password = rs.getString(PASSWORD_FIELD);
                 Date dateAdd = rs.getDate(DATEADD_FIELD);
                 String rootDir = rs.getString(ROOTDIR_FIELD);
+                String rights = rs.getString(RIGHTS_FIELD);
                 System.out.printf( "User = %s , Password = %s, Date Added = %s ", name, password, dateAdd.toString() );
-                User user = new User(id, name, password, dateAdd, rootDir);
+                User user = new User(id, name, password, dateAdd, rootDir, rights);
                 users.add(user);
             }
             rs.close();
@@ -66,6 +68,7 @@ public class UserManagement {
                 pst.setString(1, name);
                 pst.setString(2, password);
                 pst.setString(3, rootDir);
+                pst.setString(4, "r+");
                 int rows = pst.executeUpdate();
                 if (rows > 0) {
                     stmt = conn.createStatement();
@@ -76,7 +79,8 @@ public class UserManagement {
                                     rs.getString(NAME_FIELD),
                                     rs.getString(PASSWORD_FIELD),
                                     rs.getDate(DATEADD_FIELD),
-                                    rs.getString(ROOTDIR_FIELD));
+                                    rs.getString(ROOTDIR_FIELD),
+                                    rs.getString(RIGHTS_FIELD));
                         }
                     }
                 }
