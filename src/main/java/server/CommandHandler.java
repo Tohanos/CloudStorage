@@ -1,5 +1,6 @@
 package server;
 
+import command.Command;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -23,30 +24,21 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        System.out.println("Client " + ctx.channel().remoteAddress().toString() + " disconnected");
+        serverState.setPhase(StateMachine.Phase.DISCONNECT);
+    }
 
-        ByteBuf in = (ByteBuf) msg;
-        List<String> command;
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         List<String> answer;
 
-
-        try {
-            while (in.isReadable()) {
-                StringBuilder sb = new StringBuilder(in.readCharSequence(in.readableBytes(), Charset.defaultCharset()));
-                System.out.println(sb);
-                command = Arrays.asList(sb.toString().replace("\r\n", "").split(" ").clone());
-                if (command.get(0).length() > 0) {
-                    answer = serverState.parseCommand(command);
-                    ByteBuf out = ctx.alloc().buffer(51);
-                    for (String s : answer) {
-                        out.writeCharSequence(s.subSequence(0, s.length()), Charset.defaultCharset());
-                        out.writeChar(' ');
-                    }
-                    ChannelFuture f = ctx.writeAndFlush(out);
-                }
-            }
-        } finally {
-            ReferenceCountUtil.release(msg);
+        System.out.println(msg.getClass().getName());
+        if (msg instanceof Command) {
+            answer = serverState.parseCommand(((Command) msg).getCommand());
+            ctx.writeAndFlush(new Command(answer));
+        } else {
+            System.out.println("Not a command message");
         }
     }
 
