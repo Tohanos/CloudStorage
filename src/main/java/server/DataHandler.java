@@ -15,7 +15,7 @@ public class DataHandler extends SimpleChannelInboundHandler<FileChunk> {
 
     @Override
     public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        FileChunk chunk = new FileChunk(0, 2, 0, "", "AA".getBytes());
+        FileChunk chunk = new FileChunk(0, 2, 0, true,"", "AA".getBytes());
         ByteBuf out = ctx.alloc().buffer(51);
         ByteBufOutputStream bbos = new ByteBufOutputStream(out);
         ObjectOutputStream oos = new ObjectOutputStream(bbos);
@@ -27,10 +27,15 @@ public class DataHandler extends SimpleChannelInboundHandler<FileChunk> {
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, FileChunk fileChunk) throws Exception {
         User user = UserManagement.getUser(fileChunk.getUserId());
-        if (fileChunk.getSize() == 0) {
-            StateMachinesPool.getStateMachine(user).setDataChannel(channelHandlerContext.channel());
+        if (user != null) {
+            if (fileChunk.getSize() == 0) {
+                StateMachinesPool.getStateMachine(user).setDataChannel(channelHandlerContext.channel());
+            }
+            FileMerger.assemble(fileChunk);
+            if (fileChunk.isLast()) {
+                StateMachinesPool.getStateMachine(user).setPhase(StateMachine.Phase.DONE);
+            }
         }
-        FileMerger.assemble(fileChunk);
     }
 
     @Override

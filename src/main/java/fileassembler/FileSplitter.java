@@ -19,10 +19,20 @@ public class FileSplitter {
     public FileChunk getNext() throws IOException {
         RandomAccessFile file = new RandomAccessFile(filename, "r");
         byte buffer[] = new byte[size];
-        file.read(buffer, currentPos, size);
-        currentPos += size;
+        long length = file.length();
+        int lastSize = 0;
+        boolean last = false;
+        if (currentPos + size >= length) {
+            last = true;
+            lastSize = (int) length - currentPos;
+            file.read(buffer, currentPos, lastSize);
+            currentPos = -1;
+        } else {
+            file.read(buffer, currentPos, size);
+            currentPos += size;
+        }
         file.close();
-        return new FileChunk(userId, size, currentPos, filename, buffer);
+        return new FileChunk(userId, size, currentPos, last, filename, buffer);
     }
 }
 

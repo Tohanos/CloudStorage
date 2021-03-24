@@ -1,16 +1,17 @@
 package server;
 
 import command.Command;
+import fileassembler.FileChunk;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.util.ReferenceCountUtil;
-import java.nio.charset.Charset;
-import java.util.Arrays;
+import io.netty.channel.SimpleChannelInboundHandler;
+
+import java.io.ObjectOutputStream;
 import java.util.List;
 
-public class CommandHandler extends ChannelInboundHandlerAdapter {
+public class CommandHandler extends SimpleChannelInboundHandler<Command> {
 
     private StateMachine serverState;
 
@@ -21,6 +22,15 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
         serverState.setCommandChannel(ctx.channel());
 
         serverState.setPhase(StateMachine.Phase.CONNECT);
+
+        Command cmd = new Command("OK");
+        ByteBuf out = ctx.alloc().buffer(51);
+        ByteBufOutputStream bbos = new ByteBufOutputStream(out);
+        ObjectOutputStream oos = new ObjectOutputStream(bbos);
+        oos.writeObject(cmd);
+        oos.flush();
+        ChannelFuture f = ctx.writeAndFlush(out);
+
     }
 
     @Override
@@ -30,16 +40,11 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    protected void channelRead0(ChannelHandlerContext ctx, Command command) {
         List<String> answer;
 
-        System.out.println(msg.getClass().getName());
-        if (msg instanceof Command) {
-            answer = serverState.parseCommand(((Command) msg).getCommand());
-            ctx.writeAndFlush(new Command(answer));
-        } else {
-            System.out.println("Not a command message");
-        }
+        answer = serverState.parseCommand(command.getCommand());
+        ctx.writeAndFlush(new Command(answer));
     }
 
     @Override

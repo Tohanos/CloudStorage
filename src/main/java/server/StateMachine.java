@@ -118,17 +118,22 @@ public class StateMachine{
                     }
                     if (currentPhase == Phase.DONE) {
                         answer.add("OK");
-
+                        commands.clear();
                     }
 
                 }
                 case RECIEVING -> {
+                    if (currentPhase == Phase.DONE) {
+                        answer.add("OK");
+                        commands.clear();
 
-
-
+                    }
                 }
                 case TRANSMITTING -> {
-
+                    if (currentPhase == Phase.DONE) {
+                        answer.add("OK");
+                        //commands.clear();
+                    }
                 }
             }
 

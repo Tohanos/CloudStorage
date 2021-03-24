@@ -6,13 +6,15 @@ public class FileChunk implements Serializable {
     int userId;
     int size;
     int position;
+    boolean last;
     String filename;
     byte[] buffer;
 
-    public FileChunk(int userId, int size, int position, String filename, byte[] buffer) {
+    public FileChunk(int userId, int size, int position, boolean last, String filename, byte[] buffer) {
         this.userId = userId;
         this.size = size;
         this.position = position;
+        this.last = last;
         this.filename = filename;
         this.buffer = buffer;
     }
@@ -35,5 +37,9 @@ public class FileChunk implements Serializable {
 
     public byte[] getBuffer() {
         return buffer;
+    }
+
+    public boolean isLast() {
+        return last;
     }
 }
