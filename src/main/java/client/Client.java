@@ -9,10 +9,14 @@ import java.util.Arrays;
 public class Client {
 	private final Socket commandSocket;
 	private final Socket dataSocket;
-	private final ObjectInputStream commandInputStream;
-	private final ObjectOutputStream commandOutputStream;
-	private final ObjectInputStream dataInputStream;
-	private final ObjectOutputStream dataOutputStream;
+	private final DataInputStream commandInputStream;
+	private final DataOutputStream commandOutputStream;
+	private final DataInputStream dataInputStream;
+	private final DataOutputStream dataOutputStream;
+
+	private String userName;
+	private String password;
+	private int userId;
 
 
 	enum ClientState {
@@ -21,17 +25,22 @@ public class Client {
 		CLOSE
 	}
 
+	enum TransmissionPhase {
+		SENDING,
+		RECIEVING
+	}
+
 	ClientState state;
 
 	public Client() throws IOException {
 		state = ClientState.AUTH;
 
-		commandSocket = new Socket("localhost", 1234);
+		commandSocket = new Socket ("localhost", 1234);
 		dataSocket = new Socket("localhost", 1235);
-		commandInputStream = new ObjectInputStream(commandSocket.getInputStream());
-		commandOutputStream = new ObjectOutputStream(commandSocket.getOutputStream());
-		dataInputStream = new ObjectInputStream(dataSocket.getInputStream());
-		dataOutputStream = new ObjectOutputStream(dataSocket.getOutputStream());
+		commandInputStream = new DataInputStream(commandSocket.getInputStream());
+		commandOutputStream = new DataOutputStream(commandSocket.getOutputStream());
+		dataInputStream = new DataInputStream(dataSocket.getInputStream());
+		dataOutputStream = new DataOutputStream(dataSocket.getOutputStream());
 
 		ClientAuthorization auth = new ClientAuthorization(this);
 		ClientWindowApp app = new ClientWindowApp(this);
@@ -60,7 +69,7 @@ public class Client {
 		try {
 			File file = new File("client" + File.separator + filename);
 			if (file.exists()) {
-				commandOutputStream.writeObject(new Command("upload "+ filename));
+				commandOutputStream.writeUTF("upload "+ filename);
 				long length = file.length();
 				commandOutputStream.writeLong(length);
 				FileInputStream fis = new FileInputStream(file);
@@ -85,7 +94,7 @@ public class Client {
 		try {
 			File file = new File("client" + File.separator + filename);
 			if(!file.exists()) {
-				commandOutputStream.writeObject(new Command("download " + filename));
+				commandOutputStream.writeUTF("download " + filename);
 				commandOutputStream.flush();
 				long length = commandInputStream.readLong();
 				FileOutputStream fos = new FileOutputStream(file);
@@ -108,12 +117,12 @@ public class Client {
 
 	public String removeFile(String filename) {
 		try {
-			commandOutputStream.writeObject(new Command("remove " + filename));
+			commandOutputStream.writeUTF("remove " + filename);
 			commandOutputStream.flush();
-			Command status = (Command) commandInputStream.readObject();
+			Command status = new Command(commandInputStream.readUTF()) ;
 			return status.getCommand().get(0);
 
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		return "Something went wrong!";
@@ -121,11 +130,11 @@ public class Client {
 
 	public ArrayList<String> getFileList () {
 		try {
-			commandOutputStream.writeObject(new Command("filelist"));
-			Command answer = (Command) commandInputStream.readObject();
+			commandOutputStream.writeUTF("filelist");
+			Command answer = new Command(commandInputStream.readUTF());
 
 			return (ArrayList<String>) answer.getCommand();
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		return null;
@@ -145,12 +154,18 @@ public class Client {
 	public int authorize (String name, String password) {
 		Command status = null;
 		try {
-			commandOutputStream.writeObject(new Command("auth " + name + " " + password));
-			status = (Command) commandInputStream.readObject();
+			commandOutputStream.writeUTF("auth " + name + " " + password);
+			commandOutputStream.flush();
+//			byte buf[] = commandInputStream.readAllBytes();
+			String s = commandInputStream.readUTF();
+			status = new Command(s);
 			if (!status.getCommand().get(0).equals("DECLINE")) {
 				return 0;
 			}
-		} catch (IOException | ClassNotFoundException e) {
+			setUserName(name);
+			setPassword(password);
+			setUserId(Integer.parseInt(status.getCommand().get(0)));
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		return status != null?
@@ -160,6 +175,18 @@ public class Client {
 
 	public void setState(ClientState state) {
 		this.state = state;
+	}
+
+	public void setUserName(String userName) {
+		this.userName = userName;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public void setUserId(int userId) {
+		this.userId = userId;
 	}
 
 	public static void main(String[] args) throws IOException{

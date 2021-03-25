@@ -8,9 +8,6 @@ import java.awt.event.WindowEvent;
 public class ClientAuthorization {
 
     private Client client;
-    private String userName;
-    private String password;
-    private int userId;
 
     JFrame authWindowFrame;
 
@@ -87,8 +84,9 @@ public class ClientAuthorization {
                 } else {
                     int result = client.authorize(login, password);
                     if (result != 0) {
-                        userId = result;
-                        userName = loginField.getText();
+                        client.setState(Client.ClientState.WORK);
+                        authWindowFrame.setVisible(false);
+                        authWindowFrame.dispose();
                     } else {
                         message.setText("Invalid username or password!!!");
                     }
@@ -97,6 +95,7 @@ public class ClientAuthorization {
 
             exitButton.addActionListener(a -> {
                 client.setState(Client.ClientState.CLOSE);
+                authWindowFrame.dispose();
             });
         }
 

@@ -68,6 +68,8 @@ public class StateMachine{
     }
 
     public List<String> parseCommand(List<String> commands) {
+        if (commands.size() == 0) return null;
+
         List<String> answer = new ArrayList<>();
 
         while (currentPhase != Phase.DONE) {
@@ -100,7 +102,7 @@ public class StateMachine{
                     }
                     if (currentPhase == Phase.DECLINE) {
                         answer.add("DECLINE");
-                        currentPhase = Phase.CONNECT;
+                        currentPhase = Phase.DONE;
                     }
                     if (currentPhase == Phase.WORK) {
                         switch (commands.get(0)) {
@@ -117,15 +119,15 @@ public class StateMachine{
 
                     }
                     if (currentPhase == Phase.DONE) {
-                        answer.add("OK");
-                        commands.clear();
+                        //answer.add("OK");
+                        //commands.clear();
                     }
 
                 }
                 case RECIEVING -> {
                     if (currentPhase == Phase.DONE) {
                         answer.add("OK");
-                        commands.clear();
+                        //commands.clear();
 
                     }
                 }
