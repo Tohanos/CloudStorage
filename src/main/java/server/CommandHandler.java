@@ -53,10 +53,10 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
         answer = serverState.parseCommand(command.getCommand());
 
         if (answer != null) {
-
-            buf.writeCharSequence(answer.toString(), Charset.defaultCharset());
-
-            ctx.writeAndFlush(buf);
+            CharSequence cs = answer.toString().replaceAll("[\\[\\]]+", "");
+            buf.writeCharSequence(answer.toString().replaceAll("[\\[\\]]+", ""),
+                    Charset.defaultCharset());
+            ChannelFuture f = ctx.writeAndFlush(msg);
         }
     }
 

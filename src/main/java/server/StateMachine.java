@@ -9,6 +9,7 @@ import java.util.List;
 public class StateMachine{
     enum State {
         IDLE,
+        WORK,
         RECIEVING,
         TRANSMITTING
     }
@@ -18,7 +19,6 @@ public class StateMachine{
         AUTHORIZE,
         ACCEPT,
         DECLINE,
-        WORK,
         DISCONNECT,
         DONE
     }
@@ -92,11 +92,10 @@ public class StateMachine{
                         }
                     }
                     if (currentPhase == Phase.ACCEPT) {
+                        currentPhase = Phase.DONE;
                         if (user != null) {
                             UsersPool.add(commandChannel, user);
                             answer.add(String.valueOf(user.getUserId()));
-                            currentPhase = Phase.WORK;
-                        } else {
                             currentPhase = Phase.DONE;
                         }
                     }
@@ -104,26 +103,28 @@ public class StateMachine{
                         answer.add("DECLINE");
                         currentPhase = Phase.DONE;
                     }
-                    if (currentPhase == Phase.WORK) {
-                        switch (commands.get(0)) {
-                            case "exit":
-                                currentPhase = Phase.DISCONNECT;
-                                break;
-                            case "upload":
-                                currentState = State.RECIEVING;
-                                break;
-                            case "download":
-                                currentState = State.TRANSMITTING;
-                                break;
-                        }
 
-                    }
                     if (currentPhase == Phase.DONE) {
                         //answer.add("OK");
                         //commands.clear();
                     }
 
                 }
+                case WORK -> {
+                    switch (commands.get(0)) {
+                        case "exit":
+                            currentPhase = Phase.DISCONNECT;
+                            break;
+                        case "upload":
+                            currentState = State.RECIEVING;
+                            break;
+                        case "download":
+                            currentState = State.TRANSMITTING;
+                            break;
+                    }
+
+                }
+
                 case RECIEVING -> {
                     if (currentPhase == Phase.DONE) {
                         answer.add("OK");

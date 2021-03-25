@@ -152,25 +152,24 @@ public class Client {
 	}
 
 	public int authorize (String name, String password) {
-		Command status = null;
 		try {
+			String s = "";
 			commandOutputStream.writeUTF("auth " + name + " " + password);
 			commandOutputStream.flush();
-//			byte buf[] = commandInputStream.readAllBytes();
-			String s = commandInputStream.readUTF();
-			status = new Command(s);
-			if (!status.getCommand().get(0).equals("DECLINE")) {
+			byte buf[] = new byte[100];
+			int num = commandInputStream.read(buf);
+			s = buf.toString();
+			if (!s.equals("DECLINE")) {
 				return 0;
 			}
 			setUserName(name);
 			setPassword(password);
-			setUserId(Integer.parseInt(status.getCommand().get(0)));
+			setUserId(Integer.parseInt(s));
+			return Integer.parseInt(s);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return status != null?
-				Integer.parseInt(status.getCommand().get(0)):
-				0;
+		return 0;
 	}
 
 	public void setState(ClientState state) {
