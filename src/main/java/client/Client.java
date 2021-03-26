@@ -3,6 +3,7 @@ package client;
 import command.Command;
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -79,8 +80,7 @@ public class Client {
 					commandOutputStream.write(buffer, 0, read);
 				}
 				commandOutputStream.flush();
-				String status = commandInputStream.readUTF();
-				return status;
+				return commandInputStream.readUTF();
 			} else {
 				return "File does not exist";
 			}
@@ -104,8 +104,7 @@ public class Client {
 					fos.write(buffer, 0, read);
 				}
 				fos.close();
-				String status = commandInputStream.readUTF();
-				return status;
+				return commandInputStream.readUTF();
 			} else {
 				return "File exists!";
 			}
@@ -130,10 +129,12 @@ public class Client {
 
 	public ArrayList<String> getFileList () {
 		try {
-			commandOutputStream.writeUTF("filelist");
-			Command answer = new Command(commandInputStream.readUTF());
-
-			return (ArrayList<String>) answer.getCommand();
+			String s = "";
+			commandOutputStream.writeUTF("ls");
+			byte[] buf = new byte[10000];
+			int num = commandInputStream.read(buf);
+			s = new String(buf, Charset.defaultCharset()).trim();
+			return new ArrayList<>(Arrays.asList(s.split(" ")));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -144,6 +145,7 @@ public class Client {
 		try {
 			File file = new File("client" + File.separator);
 			String[] fileNames = file.list();
+			assert fileNames != null;
 			return new ArrayList<>(Arrays.asList(fileNames));
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -151,20 +153,59 @@ public class Client {
 		return null;
 	}
 
+	public int createDir (String dirName) {
+		try {
+			String s = "";
+			commandOutputStream.writeUTF("mkdir " + dirName);
+			byte[] buf = new byte[100];
+			int num = commandInputStream.read(buf);
+			s = new String(buf, Charset.defaultCharset()).trim();
+			if (s.equals("OK")) {
+				return 1;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
 	public int authorize (String name, String password) {
 		try {
 			String s = "";
 			commandOutputStream.writeUTF("auth " + name + " " + password);
 			commandOutputStream.flush();
-			byte buf[] = new byte[100];
+			byte[] buf = new byte[100];
 			int num = commandInputStream.read(buf);
-			s = buf.toString();
-			if (!s.equals("DECLINE")) {
+			s = new String(buf, Charset.defaultCharset()).trim();
+			if (s.equals("DECLINE")) {
 				return 0;
 			}
 			setUserName(name);
 			setPassword(password);
 			setUserId(Integer.parseInt(s));
+			state = ClientState.WORK;
+			return Integer.parseInt(s);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	public int createNewUser (String name, String password) {
+		try {
+			String s = "";
+			commandOutputStream.writeUTF("create " + name + " " + password);
+			commandOutputStream.flush();
+			byte[] buf = new byte[100];
+			int num = commandInputStream.read(buf);
+			s = new String(buf, Charset.defaultCharset()).trim();
+			if (s.equals("EXISTS")) {
+				return 0;
+			}
+			setUserName(name);
+			setPassword(password);
+			setUserId(Integer.parseInt(s));
+			state = ClientState.WORK;
 			return Integer.parseInt(s);
 		} catch (IOException e) {
 			e.printStackTrace();

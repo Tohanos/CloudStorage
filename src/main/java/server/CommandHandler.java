@@ -24,14 +24,6 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
 
         System.out.println("Client connected: " + ctx.channel().remoteAddress());
 
-//        Command cmd = new Command("OK");
-//        ByteBuf out = ctx.alloc().buffer(51);
-//        ByteBufOutputStream bbos = new ByteBufOutputStream(out);
-//        ObjectOutputStream oos = new ObjectOutputStream(bbos);
-//        oos.writeObject(cmd);
-//        oos.flush();
-//        ChannelFuture f = ctx.writeAndFlush(out);
-
     }
 
     @Override
@@ -50,6 +42,8 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
 
         System.out.println("Incoming command " + command.getCommand().toString());
 
+        serverState.setPhase(StateMachine.Phase.INCOMING_COMMAND);
+
         answer = serverState.parseCommand(command.getCommand());
 
         if (answer != null) {
@@ -57,7 +51,10 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
             buf.writeCharSequence(answer.toString().replaceAll("[\\[\\]]+", ""),
                     Charset.defaultCharset());
             ChannelFuture f = ctx.writeAndFlush(msg);
+        } else {
+            buf.release();
         }
+
     }
 
     @Override

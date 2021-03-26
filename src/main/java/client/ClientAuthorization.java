@@ -73,6 +73,19 @@ public class ClientAuthorization {
             authWindowFrame.setVisible(true);
 
             newUserButton.addActionListener(a -> {
+                String login = loginField.getText();
+                String password = String.valueOf(passwordField.getPassword());
+                if (login.length() <= 0 || password.length() <= 0) {
+                    message.setText("Login or password cannot be blank!");
+                } else {
+                    int result = client.authorize(login, password);
+                    if (result != 0) {
+                        authWindowFrame.setVisible(false);
+                        authWindowFrame.dispose();
+                    } else {
+                        message.setText("Invalid username or password!!!");
+                    }
+                }
 
             });
 
@@ -84,7 +97,6 @@ public class ClientAuthorization {
                 } else {
                     int result = client.authorize(login, password);
                     if (result != 0) {
-                        client.setState(Client.ClientState.WORK);
                         authWindowFrame.setVisible(false);
                         authWindowFrame.dispose();
                     } else {
