@@ -1,9 +1,15 @@
 package server;
 
+import fileassembler.FileChunk;
+import fileassembler.FileSplitter;
+import io.netty.buffer.ByteBuf;
 import user.User;
 import io.netty.channel.Channel;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -23,6 +29,8 @@ public class StateMachine{
         AUTHORIZE,
         ACCEPT,
         DECLINE,
+        READY,
+        NEXT,
         DISCONNECT,
         DONE
     }
@@ -34,7 +42,10 @@ public class StateMachine{
     private Phase currentPhase;
     private Channel commandChannel;
     private Channel dataChannel;
-    private String currentDir = "";
+    private String currentDir = "server";
+    private int chunkSize = 256;
+    private String fileName;
+    private FileSplitter splitter;
 
     public StateMachine() {
         currentState = State.IDLE;
@@ -72,7 +83,7 @@ public class StateMachine{
         return currentState;
     }
 
-    public List<String> parseCommand(List<String> commands) {
+    public List<String> parseCommand(List<String> commands) throws IOException {
         if (commands.size() == 0) return null;
 
         List<String> answer = new ArrayList<>();
@@ -91,7 +102,6 @@ public class StateMachine{
                             answer.add("EXISTS");
                             currentPhase = Phase.DONE;
                         } else {
-                            answer.add(String.valueOf(user.getUserId()));
                             File file = new File("server" + File.separator + user.getRootDir());
                             file.mkdir();
                             UsersPool.add(commandChannel, user);
@@ -108,7 +118,12 @@ public class StateMachine{
                             if (UserManagement.exists(commands.get(1))) {            //В пуле команд под индексом 1 идёт имя пользователя
                                 user = UserManagement.getUser(commands.get(1));
                                 if (user.getPassword().equals(commands.get(2))) {    //В пуле команд под индексом 2 идёт введённый пароль
-                                    currentPhase = Phase.ACCEPT;
+//                                    if (StateMachinesPool.getStateMachine(user.getUserId()) == null) {
+                                        currentPhase = Phase.ACCEPT;
+//                                    } else {
+//                                        answer.add("EXIST");
+//                                        currentPhase = Phase.DONE;
+//                                    }
                                 }
                             }
                         }
@@ -118,7 +133,7 @@ public class StateMachine{
                         if (user != null) {
                             UsersPool.add(commandChannel, user);
                             answer.add(String.valueOf(user.getUserId()));
-                            currentDir = user.getRootDir();
+                            currentDir = currentDir + File.separator + user.getRootDir();
                             currentState = State.WORK;
                         }
                     }
@@ -142,19 +157,23 @@ public class StateMachine{
                             break;
                         case "download":
                             currentState = State.TRANSMITTING;
+                            if (commands.size() > 1) fileName = commands.get(1);
+                            answer.add("READY");
+                            currentPhase = Phase.READY;
                             break;
                         case "mkdir":
                             if (commands.size() > 1) {
                                 File file = new File(currentDir + File.separator + commands.get(1));
                                 file.mkdir();
                             }
-                            currentPhase = Phase.DONE;
+                            commands.set(0, "ls");
                             break;
                         case "rm":
                             if (commands.size() > 1) {
                                 File file = new File(currentDir + File.separator + commands.get(1));
                                 file.delete();
                             }
+                            answer.add("DONE");
                             currentPhase = Phase.DONE;
                             break;
                         case "cd":
@@ -175,13 +194,16 @@ public class StateMachine{
                                     names.addAll(Arrays.asList(fileNames));
                                 }
                                 names.add("..");
-                                return names;
+                                answer = names;
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
                             currentPhase = Phase.DONE;
                             break;
-
+                        case "chunksize":
+                            currentPhase = Phase.DONE;
+                            answer.add(String.valueOf(chunkSize));
+                            break;
                     }
                     if (currentPhase == Phase.DONE) {
                         //answer.add("OK");
@@ -195,11 +217,30 @@ public class StateMachine{
                         answer.add("OK");
                         currentState = State.WORK;
                     }
+                    if (currentPhase == Phase.NEXT) {
+                        answer.add("NEXT");
+                    }
                 }
                 case TRANSMITTING -> {
                     if (currentPhase == Phase.DONE) {
                         answer.add("OK");
                         currentState = State.WORK;
+                    }
+                    if (currentPhase == Phase.READY) {
+                        if (commands.get(0).equals("START")) {
+                            File file = new File(currentDir + File.separator + fileName);
+                            int size = 0;
+                            if (file.exists()) {
+                                splitter = new FileSplitter(currentDir + File.separator + fileName,
+                                        chunkSize,
+                                        user.getUserId());
+                                sendFileChunk(splitter.getNext());
+                            }
+
+                        }
+                    }
+                    if (currentPhase == Phase.NEXT) {
+                        answer.add("NEXT");
                     }
                 }
             }
@@ -213,5 +254,17 @@ public class StateMachine{
         }
 
         return answer;
+    }
+
+    private void sendFileChunk (FileChunk chunk) {
+        ByteBuf buf = dataChannel.alloc().buffer(143 + chunkSize);
+        buf.writeInt(chunk.getUserId());
+        buf.writeInt(chunk.getSize());
+        buf.writeInt(chunk.getPosition());
+        buf.writeBoolean(chunk.isLast());
+        buf.writeShort((short)chunk.getFilename().length());
+        buf.writeBytes(chunk.getFilename().getBytes());
+        buf.writeBytes(chunk.getBuffer());
+        dataChannel.writeAndFlush(buf);
     }
 }

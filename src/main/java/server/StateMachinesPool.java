@@ -27,9 +27,9 @@ public class StateMachinesPool {
         return null;
     }
 
-    public static StateMachine getStateMachine(User user) {
+    public static StateMachine getStateMachine(int userId) {
         for (StateMachine stateMachine : pool) {
-            if (stateMachine.getUser().equals(user)) {
+            if (stateMachine.getUser().getUserId() == userId) {
                 return stateMachine;
             }
         }

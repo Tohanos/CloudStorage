@@ -1,5 +1,6 @@
 package fileassembler;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
@@ -17,21 +18,26 @@ public class FileSplitter {
     }
 
     public FileChunk getNext() throws IOException {
-        RandomAccessFile file = new RandomAccessFile(filename, "r");
-        byte buffer[] = new byte[size];
-        long length = file.length();
-        int lastSize = 0;
+        RandomAccessFile file = null;
         boolean last = false;
-        if (currentPos + size >= length) {
-            last = true;
-            lastSize = (int) length - currentPos;
-            file.read(buffer, currentPos, lastSize);
-            currentPos = -1;
-        } else {
-            file.read(buffer, currentPos, size);
-            currentPos += size;
+        byte[] buffer = new byte[size];
+        try {
+            file = new RandomAccessFile(filename, "r");
+            long length = file.length();
+            int lastSize = 0;
+            if (currentPos + size >= length) {
+                last = true;
+                lastSize = (int) length - currentPos;
+                file.read(buffer, currentPos, lastSize);
+                currentPos = -1;
+            } else {
+                file.read(buffer, currentPos, size);
+                currentPos += size;
+            }
+            file.close();
+        } catch (FileNotFoundException e) {
+            return null;
         }
-        file.close();
         return new FileChunk(userId, size, currentPos, last, filename, buffer);
     }
 }

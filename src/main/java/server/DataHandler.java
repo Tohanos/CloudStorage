@@ -2,40 +2,60 @@ package server;
 
 import fileassembler.FileChunk;
 import fileassembler.FileMerger;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import user.User;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
 
-import java.io.ObjectOutputStream;
+import java.nio.charset.Charset;
 
-public class DataHandler extends SimpleChannelInboundHandler<FileChunk> {
+public class DataHandler extends ChannelInboundHandlerAdapter {
 
     @Override
-    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        FileChunk chunk = new FileChunk(0, 2, 0, true,"", "AA".getBytes());
-        ByteBuf out = ctx.alloc().buffer(51);
-        ByteBufOutputStream bbos = new ByteBufOutputStream(out);
-        ObjectOutputStream oos = new ObjectOutputStream(bbos);
-        oos.writeObject(chunk);
-        oos.flush();
-        ChannelFuture f = ctx.writeAndFlush(out);
+    public void channelRegistered(ChannelHandlerContext ctx) {
+
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext channelHandlerContext, FileChunk fileChunk) throws Exception {
-        User user = UserManagement.getUser(fileChunk.getUserId());
+    public void channelRead(ChannelHandlerContext channelHandlerContext, Object msg) throws Exception {
+        ByteBuf buf = (ByteBuf) msg;
+        int userId = 0;
+        int size = 0;
+        int position = 0;
+        boolean last = false;
+        short fileNameSize = 0;
+        if (buf.readableBytes() >= 15) {
+            userId = buf.readInt();
+            size = buf.readInt();
+            position = buf.readInt();
+            last = buf.readBoolean();
+            fileNameSize = buf.readShort();
+        }
+        String fileName = "";
+        if (buf.readableBytes() >= fileNameSize) {
+            fileName = buf.readCharSequence(fileNameSize, Charset.defaultCharset()).toString();
+        }
+        byte[] body = new byte[size];
+        if (buf.readableBytes() >= size) {
+            buf.readBytes(body, 0, size);
+        }
+
+        FileChunk fileChunk = new FileChunk(userId, size, position, last, fileName, body);
+
+        User user = UserManagement.getUser(userId);
         if (user != null) {
             if (fileChunk.getSize() == 0) {
-                StateMachinesPool.getStateMachine(user).setDataChannel(channelHandlerContext.channel());
+                StateMachinesPool.getStateMachine(userId).setDataChannel(channelHandlerContext.channel());
             }
-            FileMerger.assemble(fileChunk);
+            FileMerger.assemble(fileChunk, "server");
             if (fileChunk.isLast()) {
-                StateMachinesPool.getStateMachine(user).setPhase(StateMachine.Phase.DONE);
+                StateMachinesPool.getStateMachine(userId).setPhase(StateMachine.Phase.DONE);
+            } else {
+                StateMachinesPool.getStateMachine(userId).setPhase(StateMachine.Phase.NEXT);
             }
         }
+        buf.release();
     }
 
     @Override

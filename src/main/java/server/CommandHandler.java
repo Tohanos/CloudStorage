@@ -2,12 +2,11 @@ package server;
 
 import command.Command;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
-import java.io.ObjectOutputStream;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.List;
 
@@ -33,12 +32,12 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws IOException {
         List<String> answer;
 
         ByteBuf buf = (ByteBuf) msg;
 
-        Command command = new Command(buf.readCharSequence(buf.readableBytes(), Charset.defaultCharset()).toString().replaceAll("[^0-9a-zA-Z ]+", ""));
+        Command command = new Command(buf.readCharSequence(buf.readableBytes(), Charset.defaultCharset()).toString().replaceAll("[^0-9a-zA-Z. ]+", ""));
 
         System.out.println("Incoming command " + command.getCommand().toString());
 
@@ -47,8 +46,8 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
         answer = serverState.parseCommand(command.getCommand());
 
         if (answer != null) {
-            CharSequence cs = answer.toString().replaceAll("[\\[\\]]+", "");
-            buf.writeCharSequence(answer.toString().replaceAll("[\\[\\]]+", ""),
+            CharSequence cs = answer.toString().replaceAll("[\\[\\],]+", "");
+            buf.writeCharSequence(answer.toString().replaceAll("[\\[\\],]+", ""),
                     Charset.defaultCharset());
             ChannelFuture f = ctx.writeAndFlush(msg);
         } else {

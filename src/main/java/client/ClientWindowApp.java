@@ -4,6 +4,8 @@ import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
@@ -12,6 +14,11 @@ public class ClientWindowApp {
     JFrame mainWindowFrame;
 
     Client client;
+
+    String currentLocalDir;
+
+    int serverListClickCount;
+    int clientListClickCount;
 
     public ClientWindowApp(Client client) {
         this.client = client;
@@ -40,7 +47,7 @@ public class ClientWindowApp {
             JScrollPane serverFilesPane = new JScrollPane(serverFilesList);
             JScrollPane clientFilesPane = new JScrollPane(clientFilesList);
 
-
+            JTextField createDirField = new JTextField();
 
             JButton uploadButton = new JButton("Upload");
             JButton downloadButton = new JButton("Download");
@@ -49,17 +56,26 @@ public class ClientWindowApp {
 
             JPanel filesPanel = new JPanel();
             JPanel buttonPanel = new JPanel();
+            JPanel createDirPanel = new JPanel();
+            JPanel controlPanel = new JPanel();
 
             buttonPanel.add(removeButton, FlowLayout.LEFT);
             buttonPanel.add(downloadButton, FlowLayout.LEFT);
             buttonPanel.add(uploadButton, FlowLayout.LEFT);
-            buttonPanel.add(createDirButton, FlowLayout.LEFT);
+
 
             filesPanel.add(serverFilesPane, BoxLayout.X_AXIS);
             filesPanel.add(clientFilesPane, BoxLayout.X_AXIS);
 
-            serverFilesPane.setPreferredSize(new Dimension(150, 220));
-            clientFilesPane.setPreferredSize(new Dimension(150, 220));
+            createDirPanel.add(createDirButton, FlowLayout.LEFT);
+            createDirPanel.add(createDirField, FlowLayout.LEFT);
+
+            controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.Y_AXIS));
+            controlPanel.add(createDirPanel);
+            controlPanel.add(buttonPanel);
+
+            serverFilesPane.setPreferredSize(new Dimension(150, 200));
+            clientFilesPane.setPreferredSize(new Dimension(150, 200));
 
             serverFilesList.addListSelectionListener(e -> clientFilesList.clearSelection());
             clientFilesList.addListSelectionListener(e -> serverFilesList.clearSelection());
@@ -71,22 +87,36 @@ public class ClientWindowApp {
             mainWindowFrame.setVisible(true);
 
             uploadButton.addActionListener(a -> {
-                System.out.println(client.sendFile(clientFilesList.getSelectedValue()));
-                serverFilesList.setListData(client.getFileList().toArray(new String[0]));
+                if (clientFilesList.getSelectedValue() != null) {
+                    System.out.println(client.sendFile(clientFilesList.getSelectedValue()));
+                    serverFilesList.setListData(client.getFileList().toArray(new String[0]));
+                }
             });
 
             downloadButton.addActionListener(a -> {
-                System.out.println(client.downloadFile(serverFilesList.getSelectedValue()));
-                clientFilesList.setListData(client.getFileList().toArray(new String[0]));
+                if (serverFilesList.getSelectedValue() != null) {
+                    System.out.println(client.downloadFile(serverFilesList.getSelectedValue()));
+                    clientFilesList.setListData(client.getFileList().toArray(new String[0]));
+                }
             });
 
             removeButton.addActionListener(a -> {
-                System.out.println(client.removeFile(serverFilesList.getSelectedValue()));
-                serverFilesList.setListData(client.getFileList().toArray(new String[0]));
+                if (serverFilesList.getSelectedValue() != null) {
+                    System.out.println(client.removeFile(serverFilesList.getSelectedValue()));
+                    serverFilesList.setListData(client.getFileList().toArray(new String[0]));
+                }
             });
 
             createDirButton.addActionListener(a -> {
                 System.out.println(client.removeFile(serverFilesList.getSelectedValue()));
+            });
+
+            clientFilesList.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+
+
+                }
             });
         }
 

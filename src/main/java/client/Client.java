@@ -1,6 +1,9 @@
 package client;
 
 import command.Command;
+import fileassembler.FileChunk;
+import fileassembler.FileMerger;
+
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.Charset;
@@ -18,10 +21,12 @@ public class Client {
 	private String userName;
 	private String password;
 	private int userId;
+	private int chunkSize;
 
 
 	enum ClientState {
 		AUTH,
+		INIT,
 		WORK,
 		CLOSE
 	}
@@ -43,6 +48,8 @@ public class Client {
 		dataInputStream = new DataInputStream(dataSocket.getInputStream());
 		dataOutputStream = new DataOutputStream(dataSocket.getOutputStream());
 
+
+
 		ClientAuthorization auth = new ClientAuthorization(this);
 		ClientWindowApp app = new ClientWindowApp(this);
 
@@ -50,6 +57,11 @@ public class Client {
 			switch (state) {
 				case AUTH -> {
 					auth.run();
+				}
+				case INIT -> {
+					readChunkSize();
+//					sendFileChunk(new FileChunk(userId, 2, 0, true, "", ));
+					state = ClientState.WORK;
 				}
 				case WORK -> {
 					app.run();
@@ -66,21 +78,60 @@ public class Client {
 		System.exit(0);
 	}
 
+	private void sendFileChunk (FileChunk chunk) throws IOException {
+		dataOutputStream.writeInt(chunk.getUserId());
+		dataOutputStream.writeInt(chunk.getSize());
+		dataOutputStream.writeInt(chunk.getPosition());
+		dataOutputStream.writeBoolean(chunk.isLast());
+		dataOutputStream.writeUTF(chunk.getFilename());
+		dataOutputStream.write(chunk.getBuffer(), 0, chunk.getSize());
+		dataOutputStream.flush();
+	}
+
+	private FileChunk recieveFileChunk () throws IOException {
+		int userId = dataInputStream.readInt();
+		int size = dataInputStream.readInt();
+		int position = dataInputStream.readInt();
+		boolean isLast = dataInputStream.readBoolean();
+		short fileNameLength = dataInputStream.readShort();
+		byte[] buf = new byte[fileNameLength];
+		dataInputStream.read(buf, 0, fileNameLength);
+		String filename = new String(buf);
+		buf = new byte[size];
+		dataInputStream.read(buf, 0, size);
+		return new FileChunk(userId, size, position, isLast, filename, buf);
+	}
+
+	private void readChunkSize() {
+		try {
+			commandOutputStream.writeUTF("chunksize");
+			commandOutputStream.flush();
+
+			Command answer = commandReceive();
+
+			chunkSize = Integer.parseInt(answer.getCommand().get(0));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	public String sendFile(String filename) {
 		try {
 			File file = new File("client" + File.separator + filename);
 			if (file.exists()) {
-				commandOutputStream.writeUTF("upload "+ filename);
-				long length = file.length();
-				commandOutputStream.writeLong(length);
-				FileInputStream fis = new FileInputStream(file);
-				int read = 0;
-				byte[] buffer = new byte[256];
-				while ((read = fis.read(buffer)) != -1) {
-					commandOutputStream.write(buffer, 0, read);
-				}
+
+				commandOutputStream.writeUTF("upload");
 				commandOutputStream.flush();
-				return commandInputStream.readUTF();
+				FileInputStream fis = new FileInputStream(file);
+
+				int read = 0;
+				byte[] buffer = new byte[chunkSize];
+
+				FileChunk chunk = new FileChunk(userId, (int) file.length(), 0, true, filename, fis.readAllBytes());
+
+				sendFileChunk(chunk);
+
+				return "DONE";
 			} else {
 				return "File does not exist";
 			}
@@ -96,15 +147,10 @@ public class Client {
 			if(!file.exists()) {
 				commandOutputStream.writeUTF("download " + filename);
 				commandOutputStream.flush();
-				long length = commandInputStream.readLong();
-				FileOutputStream fos = new FileOutputStream(file);
-				byte[] buffer = new byte[256];
-				for (int i = 0; i < (length + 255) / 256; i++) {
-					int read = commandInputStream.read(buffer);
-					fos.write(buffer, 0, read);
-				}
-				fos.close();
-				return commandInputStream.readUTF();
+
+				FileChunk chunk = recieveFileChunk();
+				FileMerger.assemble(chunk, "client" + File.separator);
+
 			} else {
 				return "File exists!";
 			}
@@ -116,11 +162,12 @@ public class Client {
 
 	public String removeFile(String filename) {
 		try {
-			commandOutputStream.writeUTF("remove " + filename);
+			commandOutputStream.writeUTF("rm " + filename);
 			commandOutputStream.flush();
-			Command status = new Command(commandInputStream.readUTF()) ;
-			return status.getCommand().get(0);
 
+			Command answer = commandReceive();
+
+			return answer.getCommand().get(0);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -129,12 +176,11 @@ public class Client {
 
 	public ArrayList<String> getFileList () {
 		try {
-			String s = "";
 			commandOutputStream.writeUTF("ls");
-			byte[] buf = new byte[10000];
-			int num = commandInputStream.read(buf);
-			s = new String(buf, Charset.defaultCharset()).trim();
-			return new ArrayList<>(Arrays.asList(s.split(" ")));
+
+			Command answer = commandReceive();
+
+			return new ArrayList<>(answer.getCommand());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -155,12 +201,11 @@ public class Client {
 
 	public int createDir (String dirName) {
 		try {
-			String s = "";
 			commandOutputStream.writeUTF("mkdir " + dirName);
-			byte[] buf = new byte[100];
-			int num = commandInputStream.read(buf);
-			s = new String(buf, Charset.defaultCharset()).trim();
-			if (s.equals("OK")) {
+
+			Command answer = commandReceive();
+
+			if (answer.getCommand().get(0).equals("OK")) {
 				return 1;
 			}
 		} catch (IOException e) {
@@ -171,20 +216,22 @@ public class Client {
 
 	public int authorize (String name, String password) {
 		try {
-			String s = "";
 			commandOutputStream.writeUTF("auth " + name + " " + password);
 			commandOutputStream.flush();
-			byte[] buf = new byte[100];
-			int num = commandInputStream.read(buf);
-			s = new String(buf, Charset.defaultCharset()).trim();
-			if (s.equals("DECLINE")) {
+
+			Command answer = commandReceive();
+
+			if (answer.getCommand().get(0).equals("DECLINE")) {
 				return 0;
+			}
+			if (answer.getCommand().get(0).equals("EXIST")) {
+				return -1;
 			}
 			setUserName(name);
 			setPassword(password);
-			setUserId(Integer.parseInt(s));
-			state = ClientState.WORK;
-			return Integer.parseInt(s);
+			setUserId(Integer.parseInt(answer.getCommand().get(0)));
+			state = ClientState.INIT;
+			return userId;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -193,24 +240,30 @@ public class Client {
 
 	public int createNewUser (String name, String password) {
 		try {
-			String s = "";
 			commandOutputStream.writeUTF("create " + name + " " + password);
 			commandOutputStream.flush();
-			byte[] buf = new byte[100];
-			int num = commandInputStream.read(buf);
-			s = new String(buf, Charset.defaultCharset()).trim();
-			if (s.equals("EXISTS")) {
+
+			Command answer = commandReceive();
+
+			if (answer.getCommand().get(0).equals("EXISTS")) {
 				return 0;
 			}
 			setUserName(name);
 			setPassword(password);
-			setUserId(Integer.parseInt(s));
-			state = ClientState.WORK;
-			return Integer.parseInt(s);
+			setUserId(Integer.parseInt(answer.getCommand().get(0)));
+			state = ClientState.INIT;
+			return userId;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		return 0;
+	}
+
+	private Command commandReceive () throws IOException {
+		byte[] buf = new byte[10000];
+		int num = commandInputStream.read(buf);
+		String s = new String(buf, Charset.defaultCharset()).trim();
+		return new Command(s);
 	}
 
 	public void setState(ClientState state) {

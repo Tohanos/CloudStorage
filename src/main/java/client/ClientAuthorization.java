@@ -78,12 +78,12 @@ public class ClientAuthorization {
                 if (login.length() <= 0 || password.length() <= 0) {
                     message.setText("Login or password cannot be blank!");
                 } else {
-                    int result = client.authorize(login, password);
+                    int result = client.createNewUser (login, password);
                     if (result != 0) {
                         authWindowFrame.setVisible(false);
                         authWindowFrame.dispose();
                     } else {
-                        message.setText("Invalid username or password!!!");
+                        message.setText("User exists!!!");
                     }
                 }
 
@@ -96,11 +96,15 @@ public class ClientAuthorization {
                     message.setText("Login or password cannot be blank!");
                 } else {
                     int result = client.authorize(login, password);
-                    if (result != 0) {
+                    if (result != 0 && result != -1) {
                         authWindowFrame.setVisible(false);
                         authWindowFrame.dispose();
-                    } else {
+                    }
+                    if (result == 0) {
                         message.setText("Invalid username or password!!!");
+                    }
+                    if (result == -1) {
+                        message.setText("User is already logged in!!!");
                     }
                 }
             });

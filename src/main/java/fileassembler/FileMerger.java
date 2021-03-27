@@ -3,19 +3,18 @@ package fileassembler;
 import user.User;
 import server.UserManagement;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
 public class FileMerger {
 
-    public static void assemble(FileChunk chunk) throws IOException {
+    public static void assemble(FileChunk chunk, String rootDir) throws IOException {
         User user = UserManagement.getUser(chunk.getUserId());
-        RandomAccessFile file = new RandomAccessFile(user.getRootDir() + chunk.getFilename(), "rw");
+        String path = rootDir + File.separator +
+                user.getRootDir() + File.separator + chunk.getFilename();
+        RandomAccessFile file = new RandomAccessFile(path, "rw");
         file.write(chunk.getBuffer(), chunk.getPosition(), chunk.getSize());
         file.close();
     }
-
-
-
-
 }
