@@ -2,7 +2,7 @@ package client;
 
 import command.Command;
 import fileassembler.FileChunk;
-import fileassembler.FileMerger;
+import fileassembler.MachineType;
 
 import java.io.*;
 import java.net.Socket;
@@ -22,6 +22,9 @@ public class Client {
 	private String password;
 	private int userId;
 	private int chunkSize;
+	private MachineType machineType = MachineType.CLIENT;
+	private String currentServerDir;
+	private String currentClientDir;
 
 
 	enum ClientState {
@@ -40,6 +43,8 @@ public class Client {
 
 	public Client() throws IOException {
 		state = ClientState.AUTH;
+		currentClientDir = "client";
+		currentServerDir = "";
 
 		commandSocket = new Socket ("localhost", 1234);
 		dataSocket = new Socket("localhost", 1235);
@@ -84,7 +89,7 @@ public class Client {
 		dataOutputStream.writeInt(chunk.getPosition());
 		dataOutputStream.writeBoolean(chunk.isLast());
 		dataOutputStream.writeUTF(chunk.getFilename());
-		dataOutputStream.write(chunk.getBuffer(), 0, chunk.getSize());
+		dataOutputStream.write(chunk.getBuffer(), 0, chunk.getBuffer().length);
 		dataOutputStream.flush();
 	}
 
@@ -116,22 +121,37 @@ public class Client {
 	}
 
 	public String sendFile(String filename) {
+		String serverAnswer = "";
+		int position = 0;
+		boolean last = false;
 		try {
-			File file = new File("client" + File.separator + filename);
+			File file = new File(currentClientDir + File.separator + filename);
 			if (file.exists()) {
 
 				commandOutputStream.writeUTF("upload");
 				commandOutputStream.flush();
+				int bytesToSend = chunkSize - 15 - filename.length();
 				FileInputStream fis = new FileInputStream(file);
-
-				int read = 0;
-				byte[] buffer = new byte[chunkSize];
-
-				FileChunk chunk = new FileChunk(userId, (int) file.length(), 0, true, filename, fis.readAllBytes());
-
-				sendFileChunk(chunk);
-
-				return "DONE";
+				int chunkNumber = 0;
+				while (!last) {
+					Command answer = commandReceive();
+					System.out.println(answer.getCommand().toString());
+					if (answer.getCommand().get(0).equals("NEXT")) {
+						int read = 0;
+						byte[] buffer = new byte[bytesToSend];
+						read = fis.read(buffer, position, bytesToSend);
+						if (read < bytesToSend) last = true;
+						FileChunk chunk = new FileChunk(userId, (int) file.length(), position, last, filename, buffer);
+						sendFileChunk(chunk);
+						position += bytesToSend;
+						commandOutputStream.writeUTF(String.valueOf(chunkNumber));
+						commandOutputStream.flush();
+						chunkNumber++;
+					} else return "ERROR";
+				}
+				Command answer = commandReceive();
+				serverAnswer = answer.getCommand().get(0);
+				return serverAnswer;
 			} else {
 				return "File does not exist";
 			}
@@ -142,15 +162,29 @@ public class Client {
 	}
 
 	public String downloadFile(String filename) {
+		String serverAnswer = "";
 		try {
 			File file = new File("client" + File.separator + filename);
 			if(!file.exists()) {
+				RandomAccessFile raf = new RandomAccessFile(currentClientDir + File.separator + filename, "rw");
 				commandOutputStream.writeUTF("download " + filename);
 				commandOutputStream.flush();
 
-				FileChunk chunk = recieveFileChunk();
-				FileMerger.assemble(chunk, "client" + File.separator);
-
+				Command answer = commandReceive();
+				if (answer.getCommand().get(0).equals("READY")) {
+					boolean last = false;
+					while (!last) {
+						commandOutputStream.writeUTF("NEXT");
+						commandOutputStream.flush();
+						FileChunk chunk = recieveFileChunk();
+						raf.write(chunk.getBuffer(), chunk.getPosition(), chunk.getSize());
+						last = chunk.isLast();
+						answer = commandReceive();
+						serverAnswer = answer.getCommand().get(0);
+					}
+					raf.close();
+					return "DONE";
+				}
 			} else {
 				return "File exists!";
 			}
@@ -174,6 +208,11 @@ public class Client {
 		return "Something went wrong!";
 	}
 
+	public void removeLocalFile(String filename) {
+		File file = new File(currentClientDir + File.separator + filename);
+		file.delete();
+	}
+
 	public ArrayList<String> getFileList () {
 		try {
 			commandOutputStream.writeUTF("ls");
@@ -189,7 +228,7 @@ public class Client {
 
 	public ArrayList<String> getLocalFileList() {
 		try {
-			File file = new File("client" + File.separator);
+			File file = new File(currentClientDir + File.separator);
 			String[] fileNames = file.list();
 			assert fileNames != null;
 			return new ArrayList<>(Arrays.asList(fileNames));
@@ -202,6 +241,21 @@ public class Client {
 	public int createDir (String dirName) {
 		try {
 			commandOutputStream.writeUTF("mkdir " + dirName);
+
+			Command answer = commandReceive();
+
+			if (answer.getCommand().get(0).equals("OK")) {
+				return 1;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	public int changeDir (String dirName) {
+		try {
+			commandOutputStream.writeUTF("cd " + dirName);
 
 			Command answer = commandReceive();
 
@@ -231,6 +285,9 @@ public class Client {
 			setPassword(password);
 			setUserId(Integer.parseInt(answer.getCommand().get(0)));
 			state = ClientState.INIT;
+
+			sendFileChunk(new FileChunk(userId, 0, 0, true, "", new byte[256]));
+
 			return userId;
 		} catch (IOException e) {
 			e.printStackTrace();

@@ -11,8 +11,7 @@ public class FileMerger {
 
     public static void assemble(FileChunk chunk, String rootDir) throws IOException {
         User user = UserManagement.getUser(chunk.getUserId());
-        String path = rootDir + File.separator +
-                user.getRootDir() + File.separator + chunk.getFilename();
+        String path = rootDir + File.separator + chunk.getFilename();
         RandomAccessFile file = new RandomAccessFile(path, "rw");
         file.write(chunk.getBuffer(), chunk.getPosition(), chunk.getSize());
         file.close();

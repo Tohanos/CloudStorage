@@ -2,13 +2,12 @@ package server;
 
 import fileassembler.FileChunk;
 import fileassembler.FileSplitter;
+import fileassembler.MachineType;
 import io.netty.buffer.ByteBuf;
 import user.User;
 import io.netty.channel.Channel;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +18,7 @@ public class StateMachine{
         IDLE,
         WORK,
         RECIEVING,
+        RECEIVING_COMPLETE,
         TRANSMITTING
     }
 
@@ -30,8 +30,10 @@ public class StateMachine{
         ACCEPT,
         DECLINE,
         READY,
+        BUSY,
         NEXT,
         DISCONNECT,
+        ERROR,
         DONE
     }
 
@@ -43,9 +45,15 @@ public class StateMachine{
     private Channel commandChannel;
     private Channel dataChannel;
     private String currentDir = "server";
-    private int chunkSize = 256;
+    private int chunkSize = Server.CHUNK_SIZE;
+    private int bytesToReceive = 0;
     private String fileName;
     private FileSplitter splitter;
+    private MachineType machineType = MachineType.SERVER;
+
+    private long currentTime;
+
+    private final long TIME_TO_WAIT = 3000;
 
     public StateMachine() {
         currentState = State.IDLE;
@@ -71,6 +79,10 @@ public class StateMachine{
         this.currentPhase = phase;
     }
 
+    public int getBytesToReceive() {
+        return bytesToReceive;
+    }
+
     public Channel getCommandChannel() {
         return commandChannel;
     }
@@ -81,6 +93,14 @@ public class StateMachine{
 
     public State getState() {
         return currentState;
+    }
+
+    public int getChunkSize() {
+        return chunkSize;
+    }
+
+    public String getCurrentDir() {
+        return currentDir;
     }
 
     public List<String> parseCommand(List<String> commands) throws IOException {
@@ -102,10 +122,10 @@ public class StateMachine{
                             answer.add("EXISTS");
                             currentPhase = Phase.DONE;
                         } else {
-                            File file = new File("server" + File.separator + user.getRootDir());
+                            currentDir = currentDir + File.separator + user.getRootDir();
+                            File file = new File(currentDir);
                             file.mkdir();
-                            UsersPool.add(commandChannel, user);
-                            currentDir = user.getRootDir();
+
                             currentPhase = Phase.ACCEPT;
                         }
 
@@ -131,7 +151,6 @@ public class StateMachine{
                     if (currentPhase == Phase.ACCEPT) {
                         currentPhase = Phase.DONE;
                         if (user != null) {
-                            UsersPool.add(commandChannel, user);
                             answer.add(String.valueOf(user.getUserId()));
                             currentDir = currentDir + File.separator + user.getRootDir();
                             currentState = State.WORK;
@@ -154,12 +173,15 @@ public class StateMachine{
                             break;
                         case "upload":
                             currentState = State.RECIEVING;
+                            currentTime = System.currentTimeMillis();
+                            answer.add("NEXT");
+                            currentPhase = Phase.DONE;
                             break;
                         case "download":
                             currentState = State.TRANSMITTING;
                             if (commands.size() > 1) fileName = commands.get(1);
                             answer.add("READY");
-                            currentPhase = Phase.READY;
+                            currentPhase = Phase.DONE;
                             break;
                         case "mkdir":
                             if (commands.size() > 1) {
@@ -178,12 +200,14 @@ public class StateMachine{
                             break;
                         case "cd":
                             if (commands.size() > 1) {
-                                File file = new File(currentDir + commands.get(1));
+                                File file = new File(currentDir + File.separator + commands.get(1));
                                 if (file.exists()) {
                                     currentDir = currentDir + commands.get(1);
                                 }
-                                commands.set(0, "ls");
+//                                commands.set(0, "ls");
                             }
+                            answer.add("DONE");
+                            currentPhase = Phase.DONE;
                             break;
                         case "ls":
                             try {
@@ -213,34 +237,62 @@ public class StateMachine{
                 }
 
                 case RECIEVING -> {
-                    if (currentPhase == Phase.DONE) {
-                        answer.add("OK");
-                        currentState = State.WORK;
+                    if (currentPhase == Phase.INCOMING_COMMAND) {
+                        currentPhase = Phase.NEXT;
                     }
+
                     if (currentPhase == Phase.NEXT) {
                         answer.add("NEXT");
+                        currentPhase = Phase.DONE;
                     }
-                }
-                case TRANSMITTING -> {
-                    if (currentPhase == Phase.DONE) {
-                        answer.add("OK");
-                        currentState = State.WORK;
+                    if (currentPhase == Phase.BUSY) {
+                        if (System.currentTimeMillis() - currentTime > TIME_TO_WAIT ) {
+                            currentPhase = Phase.ERROR;
+                        }
                     }
                     if (currentPhase == Phase.READY) {
-                        if (commands.get(0).equals("START")) {
-                            File file = new File(currentDir + File.separator + fileName);
-                            int size = 0;
-                            if (file.exists()) {
-                                splitter = new FileSplitter(currentDir + File.separator + fileName,
-                                        chunkSize,
-                                        user.getUserId());
-                                sendFileChunk(splitter.getNext());
-                            }
+                        answer.add("OK");
+                        currentPhase = Phase.DONE;
+                        currentState = State.WORK;
+                    }
 
+                    if (currentPhase == Phase.ERROR) {
+                        answer.add("ERROR");
+                        currentPhase = Phase.DONE;
+                        currentState = State.WORK;
+                    }
+
+                }
+                case RECEIVING_COMPLETE -> {
+                    currentPhase = Phase.DONE;
+                }
+
+                case TRANSMITTING -> {
+                    if (currentPhase == Phase.INCOMING_COMMAND) {
+                        if (commands.get(0).equals("NEXT")) {
+                            currentPhase = Phase.NEXT;
                         }
                     }
                     if (currentPhase == Phase.NEXT) {
-                        answer.add("NEXT");
+                        File file = new File(currentDir + File.separator + fileName);
+                        FileChunk chunk;
+                        if (file.exists()) {
+                            if (splitter == null)
+                                splitter = new FileSplitter(currentDir + File.separator + fileName,
+                                    chunkSize,
+                                    user.getUserId());
+                            chunk = splitter.getNext();
+                            sendFileChunk(chunk);
+                            if (chunk.isLast()) {
+                                currentPhase = Phase.DONE;
+                                currentState = State.WORK;
+                                splitter = null;
+                            }
+                        }
+                        currentPhase = Phase.DONE;
+                    }
+                    if (currentPhase == Phase.DONE) {
+                        answer.add("OK");
                     }
                 }
             }
@@ -248,7 +300,6 @@ public class StateMachine{
 
             if (currentPhase == Phase.DISCONNECT) {
                 answer.add("DISCONNECT");
-                UsersPool.remove(commandChannel);
 
             }
         }
@@ -257,7 +308,7 @@ public class StateMachine{
     }
 
     private void sendFileChunk (FileChunk chunk) {
-        ByteBuf buf = dataChannel.alloc().buffer(143 + chunkSize);
+        ByteBuf buf = dataChannel.alloc().buffer(chunkSize);
         buf.writeInt(chunk.getUserId());
         buf.writeInt(chunk.getSize());
         buf.writeInt(chunk.getPosition());

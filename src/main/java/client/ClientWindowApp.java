@@ -48,11 +48,13 @@ public class ClientWindowApp {
             JScrollPane clientFilesPane = new JScrollPane(clientFilesList);
 
             JTextField createDirField = new JTextField();
+            createDirField.setColumns(10);
 
             JButton uploadButton = new JButton("Upload");
             JButton downloadButton = new JButton("Download");
             JButton removeButton = new JButton("Remove");
             JButton createDirButton = new JButton("Create Dir");
+            JButton enterDirButton = new JButton("Enter Dir");
 
             JPanel filesPanel = new JPanel();
             JPanel buttonPanel = new JPanel();
@@ -67,8 +69,10 @@ public class ClientWindowApp {
             filesPanel.add(serverFilesPane, BoxLayout.X_AXIS);
             filesPanel.add(clientFilesPane, BoxLayout.X_AXIS);
 
-            createDirPanel.add(createDirButton, FlowLayout.LEFT);
+            createDirPanel.add(enterDirButton, FlowLayout.LEFT);
             createDirPanel.add(createDirField, FlowLayout.LEFT);
+            createDirPanel.add(createDirButton, FlowLayout.LEFT);
+
 
             controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.Y_AXIS));
             controlPanel.add(createDirPanel);
@@ -82,7 +86,7 @@ public class ClientWindowApp {
 
             mainWindowFrame.getContentPane().add(filesPanel, BorderLayout.CENTER);
 
-            mainWindowFrame.getContentPane().add(BorderLayout.SOUTH, buttonPanel);
+            mainWindowFrame.getContentPane().add(BorderLayout.SOUTH, controlPanel);
 
             mainWindowFrame.setVisible(true);
 
@@ -96,7 +100,7 @@ public class ClientWindowApp {
             downloadButton.addActionListener(a -> {
                 if (serverFilesList.getSelectedValue() != null) {
                     System.out.println(client.downloadFile(serverFilesList.getSelectedValue()));
-                    clientFilesList.setListData(client.getFileList().toArray(new String[0]));
+                    clientFilesList.setListData(client.getLocalFileList().toArray(new String[0]));
                 }
             });
 
@@ -104,11 +108,25 @@ public class ClientWindowApp {
                 if (serverFilesList.getSelectedValue() != null) {
                     System.out.println(client.removeFile(serverFilesList.getSelectedValue()));
                     serverFilesList.setListData(client.getFileList().toArray(new String[0]));
+                } else if (clientFilesList.getSelectedValue() != null) {
+                    client.removeLocalFile(clientFilesList.getSelectedValue());
+                    clientFilesList.setListData(client.getLocalFileList().toArray(new String[0]));
                 }
+
             });
 
             createDirButton.addActionListener(a -> {
-                System.out.println(client.removeFile(serverFilesList.getSelectedValue()));
+                if (createDirField.getText() != null) {
+                    System.out.println(client.createDir(createDirField.getText()));
+                    serverFilesList.setListData(client.getFileList().toArray(new String[0]));
+                }
+            });
+
+            enterDirButton.addActionListener(a -> {
+                if (serverFilesList.getSelectedValue() != null) {
+                    System.out.println(client.changeDir(serverFilesList.getSelectedValue()));
+                    serverFilesList.setListData(client.getFileList().toArray(new String[0]));
+                }
             });
 
             clientFilesList.addMouseListener(new MouseAdapter() {

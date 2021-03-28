@@ -16,6 +16,14 @@ public class StateMachinesPool {
         pool.add(stateMachine);
     }
 
+    public static void remove(Channel channel) {
+        for (StateMachine stateMachine : pool) {
+            if (stateMachine.getCommandChannel() == channel) {
+                remove(stateMachine);
+            }
+        }
+    }
+
     public static void remove(StateMachine stateMachine) {
         pool.remove(stateMachine);
     }

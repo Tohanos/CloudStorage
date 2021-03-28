@@ -10,6 +10,7 @@ public class Server {
 
 	private int commandPort;
 	private int dataPort;
+	public static final int CHUNK_SIZE = 256;
 
 	public Server(int commandPort, int dataPort) {
 		this.commandPort = commandPort;
@@ -19,6 +20,8 @@ public class Server {
 	public void run () throws InterruptedException {
 		EventLoopGroup bossGroup = new NioEventLoopGroup();
 		EventLoopGroup workerGroup = new NioEventLoopGroup();
+
+		UserManagement.readAllUsers();
 
 		try {
 
@@ -48,6 +51,7 @@ public class Server {
 
 			// Wait until the server socket is closed.
 			commandFuture.channel().closeFuture().sync();
+			StateMachinesPool.remove(commandFuture.channel());
 
 		} finally {
 			workerGroup.shutdownGracefully();

@@ -24,21 +24,20 @@ public class FileSplitter {
         try {
             file = new RandomAccessFile(filename, "r");
             long length = file.length();
-            int lastSize = 0;
             if (currentPos + size >= length) {
                 last = true;
-                lastSize = (int) length - currentPos;
-                file.read(buffer, currentPos, lastSize);
-                currentPos = -1;
+                size = (int) length - currentPos;
+                file.read(buffer, currentPos, size);
             } else {
                 file.read(buffer, currentPos, size);
-                currentPos += size;
             }
             file.close();
         } catch (FileNotFoundException e) {
             return null;
         }
-        return new FileChunk(userId, size, currentPos, last, filename, buffer);
+        FileChunk chunk = new FileChunk(userId, size, currentPos, last, filename, buffer);
+        currentPos += size;
+        return chunk;
     }
 }
 

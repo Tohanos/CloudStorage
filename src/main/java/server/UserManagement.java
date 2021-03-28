@@ -25,8 +25,9 @@ public class UserManagement {
     private final static String ROOTDIR_FIELD = "rootdir";
     private final static String RIGHTS_FIELD = "userrights";
 
-    public static List<User> readAllUsers () {
-        List<User> users = new ArrayList<>();
+    private static final List<User> users = new ArrayList<>();
+
+    public static void readAllUsers () {
 
         Connection conn = new DatabaseConnector().getConnection();
         Statement stmt = null;
@@ -52,7 +53,6 @@ public class UserManagement {
             System.exit(0);
         }
         System.out.println(" Data Retrieved Successfully ..");
-        return users;
     }
 
     public static User createNewUser (String name, String password, String rootDir) {
@@ -148,7 +148,6 @@ public class UserManagement {
     }
 
     public static boolean exists (String name) {
-        List<User> users = readAllUsers();
         for (User user : users) {
             if (user.getName().equals(name)) return true;
         }
@@ -156,7 +155,6 @@ public class UserManagement {
     }
 
     public static boolean checkPassword (String name, String password) {
-        List<User> users = readAllUsers();
         for (User user : users) {
             if (user.getName().equals(name) && user.getPassword().equals(password)) return true;
         }
@@ -164,7 +162,6 @@ public class UserManagement {
     }
 
     public static User getUser (String name) {
-        List<User> users = readAllUsers();
         for (User user : users) {
             if (user.getName().equals(name)) {
                 return user;
@@ -174,7 +171,6 @@ public class UserManagement {
     }
 
     public static User getUser (int userId) {
-        List<User> users = readAllUsers();
         for (User user : users) {
             if (user.getUserId() == userId) {
                 return user;
