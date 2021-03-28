@@ -19,6 +19,7 @@ public class StateMachine{
         WORK,
         RECIEVING,
         RECEIVING_COMPLETE,
+        RECEIVING_NEXT,
         TRANSMITTING
     }
 
@@ -262,6 +263,10 @@ public class StateMachine{
                         currentState = State.WORK;
                     }
 
+                }
+                case RECEIVING_NEXT -> {
+                    answer.add("NEXT");
+                    currentPhase = Phase.DONE;
                 }
                 case RECEIVING_COMPLETE -> {
                     currentPhase = Phase.DONE;

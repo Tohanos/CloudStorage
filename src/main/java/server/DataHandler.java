@@ -52,7 +52,7 @@ public class DataHandler extends ChannelInboundHandlerAdapter {
                         if (fileChunk.isLast()) {
                             StateMachinesPool.getStateMachine(userId).setState(StateMachine.State.RECEIVING_COMPLETE);
                         } else {
-                            StateMachinesPool.getStateMachine(userId).setPhase(StateMachine.Phase.NEXT);
+                            StateMachinesPool.getStateMachine(userId).setState(StateMachine.State.RECEIVING_NEXT);
                         }
                     }
                 }
