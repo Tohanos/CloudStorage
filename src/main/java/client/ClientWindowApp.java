@@ -92,15 +92,19 @@ public class ClientWindowApp {
 
             uploadButton.addActionListener(a -> {
                 if (clientFilesList.getSelectedValue() != null) {
+                    uploadButton.setEnabled(false);
                     System.out.println(client.sendFile(clientFilesList.getSelectedValue()));
                     serverFilesList.setListData(client.getFileList().toArray(new String[0]));
+                    uploadButton.setEnabled(true);
                 }
             });
 
             downloadButton.addActionListener(a -> {
                 if (serverFilesList.getSelectedValue() != null) {
+                    downloadButton.setEnabled(false);
                     System.out.println(client.downloadFile(serverFilesList.getSelectedValue()));
                     clientFilesList.setListData(client.getLocalFileList().toArray(new String[0]));
+                    downloadButton.setEnabled(true);
                 }
             });
 

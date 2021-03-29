@@ -3,6 +3,7 @@ package fileassembler;
 import java.io.Serializable;
 
 public class FileChunk implements Serializable {
+    char[] header = {67, 72}; //CH
     int userId;
     int size;
     int position;

@@ -64,8 +64,7 @@ public class Client {
 					auth.run();
 				}
 				case INIT -> {
-					readChunkSize();
-//					sendFileChunk(new FileChunk(userId, 2, 0, true, "", ));
+
 					state = ClientState.WORK;
 				}
 				case WORK -> {
@@ -84,6 +83,7 @@ public class Client {
 	}
 
 	private void sendFileChunk (FileChunk chunk) throws IOException {
+		dataOutputStream.writeBytes("CH");
 		dataOutputStream.writeInt(chunk.getUserId());
 		dataOutputStream.writeInt(chunk.getSize());
 		dataOutputStream.writeInt(chunk.getPosition());
@@ -94,6 +94,8 @@ public class Client {
 	}
 
 	private FileChunk recieveFileChunk () throws IOException {
+		String header = new String(dataInputStream.readNBytes(2), Charset.defaultCharset());
+		if (!header.equals("CH")) return null;
 		int userId = dataInputStream.readInt();
 		int size = dataInputStream.readInt();
 		int position = dataInputStream.readInt();
@@ -128,30 +130,40 @@ public class Client {
 			File file = new File(currentClientDir + File.separator + filename);
 			if (file.exists()) {
 
-				commandOutputStream.writeUTF("upload");
+				commandOutputStream.writeUTF("upload " + filename);
 				commandOutputStream.flush();
-				int bytesToSend = chunkSize - 15 - filename.length();
-				FileInputStream fis = new FileInputStream(file);
-				int chunkNumber = 0;
-				while (!last) {
-					Command answer = commandReceive();
-					System.out.println(answer.getCommand().toString());
-					if (answer.getCommand().get(0).equals("NEXT")) {
+				Command answer = commandReceive();
+				serverAnswer = answer.getCommand().get(0);
+				if (serverAnswer.equals("READY")) {
+					int bytesToSend = chunkSize - 17 - filename.length();
+					FileInputStream fis = new FileInputStream(file);
+					int chunkNumber = 0;
+					while (!last) {
 						int read = 0;
 						byte[] buffer = new byte[bytesToSend];
-						read = fis.read(buffer, position, bytesToSend);
+						read = fis.read(buffer, 0, bytesToSend);
 						if (read < bytesToSend) last = true;
-						FileChunk chunk = new FileChunk(userId, (int) file.length(), position, last, filename, buffer);
+						FileChunk chunk = new FileChunk(userId, read, position, last, filename, buffer);
 						sendFileChunk(chunk);
 						position += bytesToSend;
 						commandOutputStream.writeUTF(String.valueOf(chunkNumber));
 						commandOutputStream.flush();
+						answer = commandReceive();
+						serverAnswer = answer.getCommand().get(0);
+						if (serverAnswer.equals("ERROR")) {
+							System.out.println("Receiving file error");
+							return serverAnswer;
+						}
 						chunkNumber++;
-					} else return "ERROR";
+					}
+					fis.close();
+					commandOutputStream.writeUTF("uploaddone");
+					commandOutputStream.flush();
+					answer = commandReceive();
+					serverAnswer = answer.getCommand().get(0);
+					System.out.println(serverAnswer);
+					return serverAnswer;
 				}
-				Command answer = commandReceive();
-				serverAnswer = answer.getCommand().get(0);
-				return serverAnswer;
 			} else {
 				return "File does not exist";
 			}
@@ -285,8 +297,9 @@ public class Client {
 			setPassword(password);
 			setUserId(Integer.parseInt(answer.getCommand().get(0)));
 			state = ClientState.INIT;
+			readChunkSize();
 
-			sendFileChunk(new FileChunk(userId, 0, 0, true, "", new byte[256]));
+			sendFileChunk(new FileChunk(userId, 0, 0, true, "", new byte[chunkSize]));
 
 			return userId;
 		} catch (IOException e) {
@@ -320,6 +333,7 @@ public class Client {
 		byte[] buf = new byte[10000];
 		int num = commandInputStream.read(buf);
 		String s = new String(buf, Charset.defaultCharset()).trim();
+		System.out.println(s);
 		return new Command(s);
 	}
 

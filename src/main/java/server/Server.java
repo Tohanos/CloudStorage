@@ -10,7 +10,7 @@ public class Server {
 
 	private int commandPort;
 	private int dataPort;
-	public static final int CHUNK_SIZE = 256;
+	public static final int CHUNK_SIZE = 1024;
 
 	public Server(int commandPort, int dataPort) {
 		this.commandPort = commandPort;

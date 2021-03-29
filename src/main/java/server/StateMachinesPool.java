@@ -1,6 +1,5 @@
 package server;
 
-import user.User;
 import io.netty.channel.Channel;
 
 import java.util.LinkedList;
@@ -31,6 +30,13 @@ public class StateMachinesPool {
     public static StateMachine.State getState(Channel commandChannel) {
         for (StateMachine stateMachine : pool) {
             if (stateMachine.getCommandChannel() == commandChannel) return stateMachine.getState();
+        }
+        return null;
+    }
+
+    public static StateMachine getStateMachine (Channel dataChannel) {
+        for (StateMachine stateMachine : pool) {
+            if (stateMachine.getDataChannel() == dataChannel) return stateMachine;
         }
         return null;
     }

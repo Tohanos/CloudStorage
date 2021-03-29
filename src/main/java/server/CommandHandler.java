@@ -40,6 +40,7 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
         Command command = new Command(buf.readCharSequence(buf.readableBytes(), Charset.defaultCharset()).toString().replaceAll("[^0-9a-zA-Z. ]+", ""));
 
         System.out.println("Incoming command " + command.getCommand().toString());
+        System.out.println("State: " + serverState.getState());
 
         serverState.setPhase(StateMachine.Phase.INCOMING_COMMAND);
 

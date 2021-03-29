@@ -19,7 +19,7 @@ public class StateMachine{
         WORK,
         RECIEVING,
         RECEIVING_COMPLETE,
-        RECEIVING_NEXT,
+        RECEIVING_ERROR,
         TRANSMITTING
     }
 
@@ -49,8 +49,10 @@ public class StateMachine{
     private int chunkSize = Server.CHUNK_SIZE;
     private int bytesToReceive = 0;
     private String fileName;
+    private String fileNameWithPath = "";
     private FileSplitter splitter;
     private MachineType machineType = MachineType.SERVER;
+
 
     private long currentTime;
 
@@ -102,6 +104,14 @@ public class StateMachine{
 
     public String getCurrentDir() {
         return currentDir;
+    }
+
+    public String getFileNameWithPath() {
+        return fileNameWithPath;
+    }
+
+    public Channel getDataChannel() {
+        return dataChannel;
     }
 
     public List<String> parseCommand(List<String> commands) throws IOException {
@@ -173,10 +183,13 @@ public class StateMachine{
                             currentPhase = Phase.DISCONNECT;
                             break;
                         case "upload":
-                            currentState = State.RECIEVING;
-                            currentTime = System.currentTimeMillis();
-                            answer.add("NEXT");
-                            currentPhase = Phase.DONE;
+                            if (commands.size() > 1) {
+                                fileNameWithPath = currentDir + File.separator + fileName;
+                                currentState = State.RECIEVING;
+                                currentTime = System.currentTimeMillis();
+                                answer.add("READY");
+                                currentPhase = Phase.DONE;
+                            }
                             break;
                         case "download":
                             currentState = State.TRANSMITTING;
@@ -203,9 +216,12 @@ public class StateMachine{
                             if (commands.size() > 1) {
                                 File file = new File(currentDir + File.separator + commands.get(1));
                                 if (file.exists()) {
-                                    currentDir = currentDir + commands.get(1);
+                                    currentDir = currentDir + File.separator + commands.get(1);
                                 }
-//                                commands.set(0, "ls");
+                                if (commands.get(1).equals("..")) {
+                                    currentDir = currentDir.substring(0, currentDir.lastIndexOf(File.separator));   //TODO check
+
+                                }
                             }
                             answer.add("DONE");
                             currentPhase = Phase.DONE;
@@ -239,7 +255,14 @@ public class StateMachine{
 
                 case RECIEVING -> {
                     if (currentPhase == Phase.INCOMING_COMMAND) {
-                        currentPhase = Phase.NEXT;
+                        if (commands.get(0).equals("uploaddone")) {
+                            answer.add("DONE");
+                            currentPhase = Phase.DONE;
+                            currentState = State.WORK;
+                        } else {
+                            currentPhase = Phase.NEXT;
+                        }
+                        //currentState = State.RECEIVING_NEXT;
                     }
 
                     if (currentPhase == Phase.NEXT) {
@@ -264,11 +287,16 @@ public class StateMachine{
                     }
 
                 }
-                case RECEIVING_NEXT -> {
-                    answer.add("NEXT");
+
+                case RECEIVING_COMPLETE -> {
+                    currentState = State.WORK;
+                    answer.add("DONE");
                     currentPhase = Phase.DONE;
                 }
-                case RECEIVING_COMPLETE -> {
+
+                case RECEIVING_ERROR -> {
+                    currentState = State.WORK;
+                    answer.add("ERROR");
                     currentPhase = Phase.DONE;
                 }
 
@@ -297,6 +325,7 @@ public class StateMachine{
                         currentPhase = Phase.DONE;
                     }
                     if (currentPhase == Phase.DONE) {
+                        fileName = "";
                         answer.add("OK");
                     }
                 }
