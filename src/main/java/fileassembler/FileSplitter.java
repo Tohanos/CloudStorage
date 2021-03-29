@@ -24,7 +24,7 @@ public class FileSplitter {
         try {
             file = new RandomAccessFile(filename, "r");
             long length = file.length();
-            file.skipBytes(currentPos);
+            file.seek(currentPos);
             if (currentPos + size >= length) {
                 last = true;
                 size = (int) length - currentPos;

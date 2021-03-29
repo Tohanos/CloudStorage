@@ -358,6 +358,8 @@ public class StateMachine{
      */
     private void sendFileChunk (FileChunk chunk) {
         ByteBuf buf = dataChannel.alloc().buffer(chunkSize);
+        byte[] bytes = {67, 72};
+        buf.writeBytes(bytes);
         buf.writeInt(chunk.getUserId());
         buf.writeInt(chunk.getSize());
         buf.writeInt(chunk.getPosition());
