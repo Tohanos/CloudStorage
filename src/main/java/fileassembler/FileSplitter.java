@@ -24,12 +24,13 @@ public class FileSplitter {
         try {
             file = new RandomAccessFile(filename, "r");
             long length = file.length();
+            file.skipBytes(currentPos);
             if (currentPos + size >= length) {
                 last = true;
                 size = (int) length - currentPos;
-                file.read(buffer, currentPos, size);
+                file.read(buffer, 0, size);
             } else {
-                file.read(buffer, currentPos, size);
+                file.read(buffer, 0, size);
             }
             file.close();
         } catch (FileNotFoundException e) {

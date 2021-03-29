@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>ru.geekbrains</groupId>
-    <artifactId>CloudStorage-client</artifactId>
+    <artifactId>CloudStorage-server</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
@@ -31,7 +31,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>client.Client</mainClass>
+                            <mainClass>server.Server</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -43,7 +43,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>client.Client</mainClass>
+                            <mainClass>server.Server</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>jar-with-dependencies</descriptorRefs>

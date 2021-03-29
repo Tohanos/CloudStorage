@@ -5,11 +5,8 @@ import fileassembler.FileMerger;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import user.User;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.nio.charset.Charset;
 
 public class DataHandler extends ChannelInboundHandlerAdapter {
@@ -70,7 +67,7 @@ public class DataHandler extends ChannelInboundHandlerAdapter {
                         } else {
                             FileMerger.assemble(fileChunk, StateMachinesPool.getStateMachine(userId).getCurrentDir());
                             if (fileChunk.isLast()) {
-                                StateMachinesPool.getStateMachine(userId).setState(StateMachine.State.RECEIVING_COMPLETE);
+                                //StateMachinesPool.getStateMachine(userId).setState(StateMachine.State.RECEIVING_COMPLETE);
                                 buf.clear();
                             } else {
                                 buf.clear();

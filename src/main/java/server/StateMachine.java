@@ -214,13 +214,16 @@ public class StateMachine{
                             break;
                         case "cd":
                             if (commands.size() > 1) {
-                                File file = new File(currentDir + File.separator + commands.get(1));
-                                if (file.exists()) {
-                                    currentDir = currentDir + File.separator + commands.get(1);
-                                }
                                 if (commands.get(1).equals("..")) {
-                                    currentDir = currentDir.substring(0, currentDir.lastIndexOf(File.separator));   //TODO check
-
+                                    File file = new File(currentDir);
+                                    if (!currentDir.equals("server" + File.separator + user.getRootDir())) {
+                                        currentDir = file.getParent();
+                                    }
+                                } else {
+                                    File file = new File(currentDir + File.separator + commands.get(1));
+                                    if (file.exists()) {
+                                        currentDir = currentDir + File.separator + commands.get(1);
+                                    }
                                 }
                             }
                             answer.add("DONE");
@@ -231,10 +234,10 @@ public class StateMachine{
                                 File file = new File(currentDir + File.separator);
                                 String[] fileNames = file.list();
                                 ArrayList<String> names = new ArrayList<>();
+                                names.add("..");
                                 if (fileNames != null) {
                                     names.addAll(Arrays.asList(fileNames));
                                 }
-                                names.add("..");
                                 answer = names;
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -262,7 +265,6 @@ public class StateMachine{
                         } else {
                             currentPhase = Phase.NEXT;
                         }
-                        //currentState = State.RECEIVING_NEXT;
                     }
 
                     if (currentPhase == Phase.NEXT) {
