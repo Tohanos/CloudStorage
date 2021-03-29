@@ -11,7 +11,7 @@ import java.nio.charset.Charset;
 
 public class DataHandler extends ChannelInboundHandlerAdapter {
 
-    private ByteBuf buf;
+    private ByteBuf buf;            //буфер для сбора прилетевших байтов
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
@@ -20,7 +20,7 @@ public class DataHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) {
-        buf.release();
+        buf.release();      //релизим буфер при выходе для СМ
         buf = null;
     }
 
@@ -31,11 +31,11 @@ public class DataHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ByteBuf m = (ByteBuf) msg;
-        buf.writeBytes(m);
-        m.release();
+        ByteBuf m = (ByteBuf) msg;      //Собственно ByteBuf
+        buf.writeBytes(m);              //копируем (этот код - кусок из туториала)
+        m.release();                    //сбрасываем буфер обработчика
 
-        if (buf.readableBytes() >= Server.CHUNK_SIZE) {
+        if (buf.readableBytes() >= Server.CHUNK_SIZE) { //если накопилось байтов размером с отрезк + служебная информация
 
             try {
                 byte[] header = new byte[2];
@@ -76,7 +76,7 @@ public class DataHandler extends ChannelInboundHandlerAdapter {
                     }
                 } else {
                     //StateMachinesPool.getStateMachine(userId).setState(StateMachine.State.RECEIVING_ERROR);
-                    buf.clear();
+                    buf.clear();    //чистим буфер
                 }
 
             } finally {

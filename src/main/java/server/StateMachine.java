@@ -13,6 +13,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/***
+ * Здесь выполняется вся логика сервера
+ */
 public class StateMachine{
     enum State {
         IDLE,
@@ -114,6 +117,12 @@ public class StateMachine{
         return dataChannel;
     }
 
+    /***
+     * Обработка команд клиента - реализация конечного автомата
+     * @param commands
+     * @return
+     * @throws IOException
+     */
     public List<String> parseCommand(List<String> commands) throws IOException {
         if (commands.size() == 0) return null;
 
@@ -343,6 +352,10 @@ public class StateMachine{
         return answer;
     }
 
+    /***
+     * Отправка файлового отрезка клиенту
+     * @param chunk
+     */
     private void sendFileChunk (FileChunk chunk) {
         ByteBuf buf = dataChannel.alloc().buffer(chunkSize);
         buf.writeInt(chunk.getUserId());

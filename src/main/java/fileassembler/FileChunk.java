@@ -4,12 +4,12 @@ import java.io.Serializable;
 
 public class FileChunk implements Serializable {
     char[] header = {67, 72}; //CH
-    int userId;
-    int size;
-    int position;
-    boolean last;
-    String filename;
-    byte[] buffer;
+    int userId;         //ИД пользователя
+    int size;           //размер отрезка
+    int position;       //стартовая позиция отрезка в файле
+    boolean last;       //флаг последнего отрезка в файле
+    String filename;    //имя файла
+    byte[] buffer;      //сам отрезок
 
     public FileChunk(int userId, int size, int position, boolean last, String filename, byte[] buffer) {
         this.userId = userId;

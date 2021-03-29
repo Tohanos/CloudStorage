@@ -46,6 +46,7 @@ public class Client {
 		currentClientDir = "client";
 		currentServerDir = "";
 
+		//готовим сокеты для двух каналов
 		commandSocket = new Socket ("localhost", 1234);
 		dataSocket = new Socket("localhost", 1235);
 		commandInputStream = new DataInputStream(commandSocket.getInputStream());
@@ -54,10 +55,11 @@ public class Client {
 		dataOutputStream = new DataOutputStream(dataSocket.getOutputStream());
 
 
-
+		//готовим формы
 		ClientAuthorization auth = new ClientAuthorization(this);
 		ClientWindowApp app = new ClientWindowApp(this);
 
+		//основной цикл
 		while (state != ClientState.CLOSE) {
 			switch (state) {
 				case AUTH -> {
@@ -82,6 +84,11 @@ public class Client {
 		System.exit(0);
 	}
 
+	/***
+	 * Отправка отрезка файла
+	 * @param chunk - собственно сам отрезок
+	 * @throws IOException
+	 */
 	private void sendFileChunk (FileChunk chunk) throws IOException {
 		dataOutputStream.writeBytes("CH");
 		dataOutputStream.writeInt(chunk.getUserId());
@@ -93,6 +100,11 @@ public class Client {
 		dataOutputStream.flush();
 	}
 
+	/***
+	 * Получение отрезка файла
+	 * @return	сам отрезок
+	 * @throws IOException
+	 */
 	private FileChunk recieveFileChunk () throws IOException {
 		String header = new String(dataInputStream.readNBytes(2), Charset.defaultCharset());
 		if (!header.equals("CH")) return null;
@@ -109,6 +121,9 @@ public class Client {
 		return new FileChunk(userId, size, position, isLast, filename, buf);
 	}
 
+	/***
+	 * Чтение размера отрезка, заданного на сервере
+	 */
 	private void readChunkSize() {
 		try {
 			commandOutputStream.writeUTF("chunksize");
@@ -122,6 +137,11 @@ public class Client {
 		}
 	}
 
+	/***
+	 * Отправка файла
+ 	 * @param filename
+	 * @return
+	 */
 	public String sendFile(String filename) {
 		String serverAnswer = "";
 		int position = 0;
@@ -138,13 +158,13 @@ public class Client {
 					int bytesToSend = chunkSize - 17 - filename.length();
 					FileInputStream fis = new FileInputStream(file);
 					int chunkNumber = 0;
-					while (!last) {
+					while (!last) {						//нарезка на отрезки
 						int read = 0;
 						byte[] buffer = new byte[bytesToSend];
 						read = fis.read(buffer, 0, bytesToSend);
 						if (read < bytesToSend) last = true;
 						FileChunk chunk = new FileChunk(userId, read, position, last, filename, buffer);
-						sendFileChunk(chunk);
+						sendFileChunk(chunk);			//и отправка
 						position += bytesToSend;
 						commandOutputStream.writeUTF(String.valueOf(chunkNumber));
 						commandOutputStream.flush();
@@ -173,6 +193,11 @@ public class Client {
 		return "Something error";
 	}
 
+	/***
+	 * Скачивание файла
+	 * @param filename
+	 * @return
+	 */
 	public String downloadFile(String filename) {
 		String serverAnswer = "";
 		try {
@@ -188,8 +213,8 @@ public class Client {
 					while (!last) {
 						commandOutputStream.writeUTF("NEXT");
 						commandOutputStream.flush();
-						FileChunk chunk = recieveFileChunk();
-						raf.write(chunk.getBuffer(), chunk.getPosition(), chunk.getSize());
+						FileChunk chunk = recieveFileChunk();								//скачивание каждого отрезка
+						raf.write(chunk.getBuffer(), chunk.getPosition(), chunk.getSize());	//и запись их в файл
 						last = chunk.isLast();
 						answer = commandReceive();
 						serverAnswer = answer.getCommand().get(0);
@@ -206,6 +231,11 @@ public class Client {
 		return "Something went wrong!";
 	}
 
+	/***
+	 * Удаление файла с сервера
+	 * @param filename
+	 * @return
+	 */
 	public String removeFile(String filename) {
 		try {
 			commandOutputStream.writeUTF("rm " + filename);
@@ -220,11 +250,19 @@ public class Client {
 		return "Something went wrong!";
 	}
 
+	/***
+	 * Удаление файла с клиента
+	 * @param filename
+	 */
 	public void removeLocalFile(String filename) {
 		File file = new File(currentClientDir + File.separator + filename);
 		file.delete();
 	}
 
+	/***
+	 * Получение списка файлов текущей директории репозитория подключенного пользователя
+	 * @return
+	 */
 	public ArrayList<String> getFileList () {
 		try {
 			commandOutputStream.writeUTF("ls");
@@ -238,6 +276,10 @@ public class Client {
 		return null;
 	}
 
+	/***
+	 * Получение списка файлов локальной текущей директории
+	 * @return
+	 */
 	public ArrayList<String> getLocalFileList() {
 		try {
 			File file = new File(currentClientDir + File.separator);
@@ -250,6 +292,11 @@ public class Client {
 		return null;
 	}
 
+	/***
+	 * Создание директории на сервере
+	 * @param dirName
+	 * @return
+	 */
 	public int createDir (String dirName) {
 		try {
 			commandOutputStream.writeUTF("mkdir " + dirName);
@@ -265,6 +312,11 @@ public class Client {
 		return 0;
 	}
 
+	/***
+	 * Смена директории
+	 * @param dirName
+	 * @return
+	 */
 	public int changeDir (String dirName) {
 		try {
 			commandOutputStream.writeUTF("cd " + dirName);
@@ -280,6 +332,12 @@ public class Client {
 		return 0;
 	}
 
+	/***
+	 * Авторизация
+	 * @param name
+	 * @param password
+	 * @return
+	 */
 	public int authorize (String name, String password) {
 		try {
 			commandOutputStream.writeUTF("auth " + name + " " + password);
@@ -308,6 +366,12 @@ public class Client {
 		return 0;
 	}
 
+	/***
+	 * Создание нового пользователя
+	 * @param name
+	 * @param password
+	 * @return
+	 */
 	public int createNewUser (String name, String password) {
 		try {
 			commandOutputStream.writeUTF("create " + name + " " + password);
@@ -329,6 +393,11 @@ public class Client {
 		return 0;
 	}
 
+	/***
+	 * Получение команды-ответа от сервера
+	 * @return
+	 * @throws IOException
+	 */
 	private Command commandReceive () throws IOException {
 		byte[] buf = new byte[10000];
 		int num = commandInputStream.read(buf);
