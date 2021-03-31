@@ -1,9 +1,9 @@
 package server;
 
 import user.UserManagement;
-import utils.FileChunk;
-import utils.FileSplitter;
-import utils.MachineType;
+import server.utils.FileChunk;
+import server.utils.FileSplitter;
+import server.utils.MachineType;
 import io.netty.buffer.ByteBuf;
 import user.User;
 import io.netty.channel.Channel;
@@ -121,6 +121,12 @@ public class StateMachine{
 
     /***
      * Обработка команд клиента - реализация конечного автомата
+     * Исходное состояние сервера - IDLE
+     * При
+     *
+     *
+     *
+     *
      * @param commands
      * @return
      * @throws IOException

@@ -1,14 +1,17 @@
 package client;
 
 import command.Command;
-import utils.FileChunk;
-import utils.MachineType;
+import server.utils.FileChunk;
+import server.utils.MachineType;
 
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import static client.utils.Utils.recieveFileChunk;
+import static client.utils.Utils.sendFileChunk;
 
 public class Client {
 	private final Socket commandSocket;
@@ -27,16 +30,16 @@ public class Client {
 	private String currentClientDir;
 
 
-	enum ClientState {
-		AUTH,
-		INIT,
-		WORK,
-		CLOSE
+	enum ClientState {		//состояние клиентского приложения
+		AUTH,				//аутентификация
+		INIT,				//инициализация
+		WORK,				//работа
+		CLOSE				//завершение
 	}
 
-	enum TransmissionPhase {
-		SENDING,
-		RECIEVING
+	enum TransmissionPhase {//фазы передачи данных
+		SENDING,			//отправка
+		RECIEVING			//получение
 	}
 
 	ClientState state;
@@ -84,48 +87,9 @@ public class Client {
 		System.exit(0);
 	}
 
-	/***
-	 * Отправка отрезка файла
-	 * @param chunk - собственно сам отрезок
-	 * @throws IOException
-	 */
-	private void sendFileChunk (FileChunk chunk) throws IOException {
-		dataOutputStream.writeBytes("CH");
-		dataOutputStream.writeInt(chunk.getUserId());
-		dataOutputStream.writeInt(chunk.getSize());
-		dataOutputStream.writeInt(chunk.getPosition());
-		dataOutputStream.writeBoolean(chunk.isLast());
-		dataOutputStream.writeUTF(chunk.getFilename());
-		dataOutputStream.write(chunk.getBuffer(), 0, chunk.getBuffer().length);
-		dataOutputStream.flush();
-	}
 
-	/***
-	 * Получение отрезка файла
-	 * @return	сам отрезок
-	 * @throws IOException
-	 */
-	private FileChunk recieveFileChunk () throws IOException {
 
-		String header = new String(dataInputStream.readNBytes(2), Charset.defaultCharset());
-		if (!header.equals("CH")) return null;
-		int userId = dataInputStream.readInt();
-		int size = dataInputStream.readInt();
-		int position = dataInputStream.readInt();
-		boolean isLast = dataInputStream.readBoolean();
-		short fileNameLength = dataInputStream.readShort();
-		byte[] buf = new byte[fileNameLength];
-		dataInputStream.read(buf, 0, fileNameLength);
-		String filename = new String(buf);
-		buf = new byte[size];
-		dataInputStream.read(buf, 0, size);
-		if (isLast) {
-			int bytesLeft = dataInputStream.available();
-			byte[] trash = new byte[bytesLeft];
-			dataInputStream.read(trash);
-		}
-		return new FileChunk(userId, size, position, isLast, filename, buf);
-	}
+
 
 	/***
 	 * Чтение размера отрезка, заданного на сервере
@@ -170,7 +134,7 @@ public class Client {
 						read = fis.read(buffer, 0, bytesToSend);
 						last = read < bytesToSend;
 						FileChunk chunk = new FileChunk(userId, read, position, last, filename, buffer);
-						sendFileChunk(chunk);																//и отправка
+						sendFileChunk(chunk, dataOutputStream);																//и отправка
 						position += read;
 						commandOutputStream.writeUTF(String.valueOf(chunkNumber));
 						commandOutputStream.flush();
@@ -223,7 +187,7 @@ public class Client {
 						commandOutputStream.writeUTF("NEXT");
 						commandOutputStream.flush();
 
-						FileChunk chunk = recieveFileChunk();					//скачивание каждого отрезка
+						FileChunk chunk = recieveFileChunk(dataInputStream);					//скачивание каждого отрезка
 						raf.write(chunk.getBuffer(), 0, chunk.getSize());	//и запись их в файл
 						last = chunk.isLast();
 
@@ -278,7 +242,7 @@ public class Client {
 	public ArrayList<String> getFileList () {
 		try {
 			commandOutputStream.writeUTF("ls");
-
+			commandOutputStream.flush();
 			Command answer = commandReceive();
 
 			return new ArrayList<>(answer.getCommand());
@@ -369,7 +333,7 @@ public class Client {
 			state = ClientState.INIT;
 			readChunkSize();
 
-			sendFileChunk(new FileChunk(userId, 0, 0, true, "", new byte[chunkSize]));
+			sendFileChunk(new FileChunk(userId, 0, 0, true, "", new byte[chunkSize]), dataOutputStream);
 
 			return userId;
 		} catch (IOException e) {
@@ -404,6 +368,8 @@ public class Client {
 		}
 		return 0;
 	}
+
+
 
 	/***
 	 * Получение команды-ответа от сервера

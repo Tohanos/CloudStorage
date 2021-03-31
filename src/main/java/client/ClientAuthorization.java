@@ -33,8 +33,10 @@ public class ClientAuthorization {
             JPanel mainPanel = new JPanel();
             JLabel loginText = new JLabel("Login:");
             JLabel passwordText = new JLabel("Password:");
+            JLabel newPasswordText = new JLabel("New password");
             JTextField loginField = new JTextField("", 15);
             JPasswordField passwordField = new JPasswordField("", 15);
+            JPasswordField newPasswordField = new JPasswordField("", 15);
 
 //			loginField.setSize(100, 15);
 //			passwordField.setSize(100, 15);
@@ -45,6 +47,8 @@ public class ClientAuthorization {
             mainPanel.add(loginText);
             mainPanel.add(passwordField);
             mainPanel.add(passwordText);
+            mainPanel.add(newPasswordField);
+            mainPanel.add(newPasswordText);
 
             layout.getConstraints(loginText).setX(Spring.constant(5));
             layout.getConstraints(loginText).setY(Spring.constant(5));
@@ -54,6 +58,10 @@ public class ClientAuthorization {
             layout.getConstraints(passwordText).setY(Spring.constant(25));
             layout.getConstraints(passwordField).setX(Spring.constant(105));
             layout.getConstraints(passwordField).setY(Spring.constant(25));
+            layout.getConstraints(newPasswordField).setX(Spring.constant(5));
+            layout.getConstraints(newPasswordField).setY(Spring.constant(45));
+            layout.getConstraints(newPasswordText).setX(Spring.constant(105));
+            layout.getConstraints(newPasswordText).setY(Spring.constant(45));
 
             authWindowFrame.getContentPane().add(BorderLayout.NORTH, message);
             authWindowFrame.getContentPane().add(BorderLayout.CENTER, mainPanel);
@@ -63,11 +71,13 @@ public class ClientAuthorization {
             JButton newUserButton = new JButton("New user");
             JButton loginButton = new JButton("Login");
             JButton exitButton = new JButton("Exit");
+            JButton changePassword = new JButton("Change pass");
 
             JPanel buttonPanel = new JPanel();
             buttonPanel.add(newUserButton);
             buttonPanel.add(loginButton);
             buttonPanel.add(exitButton);
+            buttonPanel.add(changePassword);
             authWindowFrame.getContentPane().add(BorderLayout.SOUTH, buttonPanel);
 
             authWindowFrame.setVisible(true);
@@ -105,6 +115,32 @@ public class ClientAuthorization {
                     }
                     if (result == -1) {
                         message.setText("User is already logged in!!!");
+                    }
+                }
+            });
+
+            changePassword.addActionListener(a -> {
+                String login = loginField.getText();
+                String password = String.valueOf(passwordField.getPassword());
+                String newPassword = String.valueOf(newPasswordField.getPassword());
+
+                if (login.length() <= 0 || password.length() <= 0) {
+                    message.setText("Login or password cannot be blank!");
+                } else {
+                    if (newPassword.length() <= 0) {
+                        message.setText("New password filed cannot be blank!");
+                    } else {
+                        int result = client.authorize(login, password);
+                        if (result != 0 && result != -1) {
+                            authWindowFrame.setVisible(false);
+                            authWindowFrame.dispose();
+                        }
+                        if (result == 0) {
+                            message.setText("Invalid username or password!!!");
+                        }
+                        if (result == -1) {
+                            message.setText("User is already logged in!!!");
+                        }
                     }
                 }
             });

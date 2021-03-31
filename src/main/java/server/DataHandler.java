@@ -1,8 +1,8 @@
 package server;
 
 import user.UserManagement;
-import utils.FileChunk;
-import utils.FileMerger;
+import server.utils.FileChunk;
+import server.utils.FileMerger;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import user.User;
 import io.netty.buffer.ByteBuf;

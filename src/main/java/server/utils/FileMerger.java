@@ -1,4 +1,4 @@
-package utils;
+package server.utils;
 
 import user.User;
 import user.UserManagement;
