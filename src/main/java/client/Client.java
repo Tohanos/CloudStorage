@@ -1,8 +1,8 @@
 package client;
 
 import command.Command;
-import fileassembler.FileChunk;
-import fileassembler.MachineType;
+import utils.FileChunk;
+import utils.MachineType;
 
 import java.io.*;
 import java.net.Socket;
@@ -106,6 +106,7 @@ public class Client {
 	 * @throws IOException
 	 */
 	private FileChunk recieveFileChunk () throws IOException {
+
 		String header = new String(dataInputStream.readNBytes(2), Charset.defaultCharset());
 		if (!header.equals("CH")) return null;
 		int userId = dataInputStream.readInt();
@@ -118,6 +119,11 @@ public class Client {
 		String filename = new String(buf);
 		buf = new byte[size];
 		dataInputStream.read(buf, 0, size);
+		if (isLast) {
+			int bytesLeft = dataInputStream.available();
+			byte[] trash = new byte[bytesLeft];
+			dataInputStream.read(trash);
+		}
 		return new FileChunk(userId, size, position, isLast, filename, buf);
 	}
 
@@ -156,16 +162,16 @@ public class Client {
 				serverAnswer = answer.getCommand().get(0);
 				if (serverAnswer.equals("READY")) {
 					int bytesToSend = chunkSize - 17 - filename.length();
+					byte[] buffer = new byte[bytesToSend];
 					FileInputStream fis = new FileInputStream(file);
 					int chunkNumber = 0;
-					while (!last) {						//нарезка на отрезки
+					while (!last) {																			//нарезка на отрезки
 						int read = 0;
-						byte[] buffer = new byte[bytesToSend];
 						read = fis.read(buffer, 0, bytesToSend);
-						if (read < bytesToSend) last = true;
+						last = read < bytesToSend;
 						FileChunk chunk = new FileChunk(userId, read, position, last, filename, buffer);
-						sendFileChunk(chunk);			//и отправка
-						position += bytesToSend;
+						sendFileChunk(chunk);																//и отправка
+						position += read;
 						commandOutputStream.writeUTF(String.valueOf(chunkNumber));
 						commandOutputStream.flush();
 						answer = commandReceive();
@@ -201,23 +207,29 @@ public class Client {
 	public String downloadFile(String filename) {
 		String serverAnswer = "";
 		try {
-			File file = new File("client" + File.separator + filename);
+			File file = new File(currentClientDir + File.separator + filename);
 			if(!file.exists()) {
 				RandomAccessFile raf = new RandomAccessFile(currentClientDir + File.separator + filename, "rw");
 				commandOutputStream.writeUTF("download " + filename);
 				commandOutputStream.flush();
 
 				Command answer = commandReceive();
-				if (answer.getCommand().get(0).equals("READY")) {
+				serverAnswer = answer.getCommand().get(0);
+				System.out.println(serverAnswer);
+
+				if (serverAnswer.equals("READY")) {
 					boolean last = false;
 					while (!last) {
 						commandOutputStream.writeUTF("NEXT");
 						commandOutputStream.flush();
-						FileChunk chunk = recieveFileChunk();								//скачивание каждого отрезка
-						raf.write(chunk.getBuffer(), chunk.getPosition(), chunk.getSize());	//и запись их в файл
+
+						FileChunk chunk = recieveFileChunk();					//скачивание каждого отрезка
+						raf.write(chunk.getBuffer(), 0, chunk.getSize());	//и запись их в файл
 						last = chunk.isLast();
+
 						answer = commandReceive();
 						serverAnswer = answer.getCommand().get(0);
+						System.out.println(serverAnswer);
 					}
 					raf.close();
 					return "DONE";

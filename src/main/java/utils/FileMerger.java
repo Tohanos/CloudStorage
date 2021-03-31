@@ -1,7 +1,7 @@
-package fileassembler;
+package utils;
 
 import user.User;
-import server.UserManagement;
+import user.UserManagement;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,7 +13,8 @@ public class FileMerger {
         User user = UserManagement.getUser(chunk.getUserId());
         String path = rootDir + File.separator + chunk.getFilename();
         RandomAccessFile file = new RandomAccessFile(path, "rw");
-        file.write(chunk.getBuffer(), chunk.getPosition(), chunk.getSize());
+        file.seek(chunk.getPosition());
+        file.write(chunk.getBuffer(), 0, chunk.getSize());
         file.close();
     }
 }

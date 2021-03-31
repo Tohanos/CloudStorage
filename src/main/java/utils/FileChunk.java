@@ -1,4 +1,4 @@
-package fileassembler;
+package utils;
 
 import java.io.Serializable;
 

@@ -1,8 +1,9 @@
 package server;
 
-import fileassembler.FileChunk;
-import fileassembler.FileSplitter;
-import fileassembler.MachineType;
+import user.UserManagement;
+import utils.FileChunk;
+import utils.FileSplitter;
+import utils.MachineType;
 import io.netty.buffer.ByteBuf;
 import user.User;
 import io.netty.channel.Channel;
@@ -21,6 +22,7 @@ public class StateMachine{
         IDLE,
         WORK,
         RECIEVING,
+        RECEIVING_NEXT,
         RECEIVING_COMPLETE,
         RECEIVING_ERROR,
         TRANSMITTING
@@ -132,6 +134,7 @@ public class StateMachine{
 
             switch (currentState) {
                 case IDLE -> {
+                    System.out.println("Current state - idle");
                     if (currentPhase == Phase.CONNECT || currentPhase == Phase.INCOMING_COMMAND) {
                         if (commands.get(0).equals("auth")) currentPhase = Phase.AUTHORIZE;
                         if (commands.get(0).equals("create")) currentPhase = Phase.CREATE_USER;
@@ -187,6 +190,7 @@ public class StateMachine{
 
                 }
                 case WORK -> {
+                    System.out.println("Current state - work");
                     switch (commands.get(0)) {
                         case "exit":
                             currentPhase = Phase.DISCONNECT;
@@ -199,6 +203,10 @@ public class StateMachine{
                                 answer.add("READY");
                                 currentPhase = Phase.DONE;
                             }
+                            break;
+                        case "uploaddone":
+                            answer.add("OK");
+                            currentPhase = Phase.DONE;
                             break;
                         case "download":
                             currentState = State.TRANSMITTING;
@@ -266,20 +274,18 @@ public class StateMachine{
                 }
 
                 case RECIEVING -> {
+                    System.out.println("Current state - recieving");
                     if (currentPhase == Phase.INCOMING_COMMAND) {
                         if (commands.get(0).equals("uploaddone")) {
                             answer.add("DONE");
                             currentPhase = Phase.DONE;
                             currentState = State.WORK;
                         } else {
-                            currentPhase = Phase.NEXT;
+//                            currentPhase = Phase.NEXT;
+
                         }
                     }
 
-                    if (currentPhase == Phase.NEXT) {
-                        answer.add("NEXT");
-                        currentPhase = Phase.DONE;
-                    }
                     if (currentPhase == Phase.BUSY) {
                         if (System.currentTimeMillis() - currentTime > TIME_TO_WAIT ) {
                             currentPhase = Phase.ERROR;
@@ -299,22 +305,43 @@ public class StateMachine{
 
                 }
 
+                case RECEIVING_NEXT -> {
+                    System.out.println("Current state - recieving_next");
+                    if (currentPhase == Phase.INCOMING_COMMAND) {
+                        if (commands.get(0).equals("uploaddone")) {
+                            answer.add("DONE");
+                            currentPhase = Phase.DONE;
+                            currentState = State.WORK;
+                        } else {
+                            answer.add("NEXT");
+                            currentPhase = Phase.DONE;
+                            currentState = State.RECIEVING;
+                        }
+                    }
+                }
+
                 case RECEIVING_COMPLETE -> {
+                    System.out.println("Current state - recieving_complete");
                     currentState = State.WORK;
                     answer.add("DONE");
                     currentPhase = Phase.DONE;
                 }
 
                 case RECEIVING_ERROR -> {
+                    System.out.println("Current state - recieving_error");
                     currentState = State.WORK;
                     answer.add("ERROR");
                     currentPhase = Phase.DONE;
                 }
 
                 case TRANSMITTING -> {
+                    System.out.println("Current state - transmitting");
                     if (currentPhase == Phase.INCOMING_COMMAND) {
                         if (commands.get(0).equals("NEXT")) {
                             currentPhase = Phase.NEXT;
+                        } else {
+                            answer.add("ERROR");
+                            currentState = State.WORK;
                         }
                     }
                     if (currentPhase == Phase.NEXT) {
@@ -328,16 +355,16 @@ public class StateMachine{
                             chunk = splitter.getNext();
                             sendFileChunk(chunk);
                             if (chunk.isLast()) {
-                                currentPhase = Phase.DONE;
                                 currentState = State.WORK;
                                 splitter = null;
+                                fileName = "";
                             }
+                            answer.add("DONE");
                         }
                         currentPhase = Phase.DONE;
                     }
                     if (currentPhase == Phase.DONE) {
-                        fileName = "";
-                        answer.add("OK");
+
                     }
                 }
             }

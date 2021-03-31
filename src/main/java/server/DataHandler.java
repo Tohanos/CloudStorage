@@ -1,7 +1,8 @@
 package server;
 
-import fileassembler.FileChunk;
-import fileassembler.FileMerger;
+import user.UserManagement;
+import utils.FileChunk;
+import utils.FileMerger;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import user.User;
 import io.netty.buffer.ByteBuf;
@@ -35,7 +36,7 @@ public class DataHandler extends ChannelInboundHandlerAdapter {
         buf.writeBytes(m);              //копируем (этот код - кусок из туториала)
         m.release();                    //сбрасываем буфер обработчика
 
-        if (buf.readableBytes() >= Server.CHUNK_SIZE) { //если накопилось байтов размером с отрезк + служебная информация
+        if (buf.readableBytes() >= Server.CHUNK_SIZE) { //если накопилось байтов размером с отрезок + служебная информация
 
             try {
                 byte[] header = new byte[2];
@@ -67,9 +68,10 @@ public class DataHandler extends ChannelInboundHandlerAdapter {
                         } else {
                             FileMerger.assemble(fileChunk, StateMachinesPool.getStateMachine(userId).getCurrentDir());
                             if (fileChunk.isLast()) {
-                                //StateMachinesPool.getStateMachine(userId).setState(StateMachine.State.RECEIVING_COMPLETE);
+                                StateMachinesPool.getStateMachine(userId).setState(StateMachine.State.RECEIVING_COMPLETE);
                                 buf.clear();
                             } else {
+                                StateMachinesPool.getStateMachine(userId).setState(StateMachine.State.RECEIVING_NEXT);
                                 buf.clear();
                             }
                         }

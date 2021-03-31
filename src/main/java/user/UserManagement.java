@@ -1,6 +1,6 @@
-package server;
+package user;
 
-import user.User;
+import utils.DatabaseConnector;
 
 import java.sql.*;
 import java.util.ArrayList;
