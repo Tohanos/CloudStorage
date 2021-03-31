@@ -6,12 +6,10 @@ import server.utils.MachineType;
 
 import java.io.*;
 import java.net.Socket;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import static client.utils.Utils.recieveFileChunk;
-import static client.utils.Utils.sendFileChunk;
+import static client.utils.Utils.*;
 
 public class Client {
 	private final Socket commandSocket;
@@ -34,6 +32,7 @@ public class Client {
 		AUTH,				//аутентификация
 		INIT,				//инициализация
 		WORK,				//работа
+		CHANGE_NAME_PASS,	//Смена пароля и/или имени
 		CLOSE				//завершение
 	}
 
@@ -61,6 +60,7 @@ public class Client {
 		//готовим формы
 		ClientAuthorization auth = new ClientAuthorization(this);
 		ClientWindowApp app = new ClientWindowApp(this);
+		ChangeNamePass changeNamePass = new ChangeNamePass(this);
 
 		//основной цикл
 		while (state != ClientState.CLOSE) {
@@ -75,6 +75,9 @@ public class Client {
 				case WORK -> {
 					app.run();
 				}
+				case CHANGE_NAME_PASS -> {
+					changeNamePass.run();
+				}
 			}
 		}
 		commandOutputStream.writeUTF("disconnect");
@@ -87,10 +90,6 @@ public class Client {
 		System.exit(0);
 	}
 
-
-
-
-
 	/***
 	 * Чтение размера отрезка, заданного на сервере
 	 */
@@ -99,7 +98,7 @@ public class Client {
 			commandOutputStream.writeUTF("chunksize");
 			commandOutputStream.flush();
 
-			Command answer = commandReceive();
+			Command answer = commandReceive(commandInputStream);
 
 			chunkSize = Integer.parseInt(answer.getCommand().get(0));
 		} catch (IOException e) {
@@ -122,7 +121,7 @@ public class Client {
 
 				commandOutputStream.writeUTF("upload " + filename);
 				commandOutputStream.flush();
-				Command answer = commandReceive();
+				Command answer = commandReceive(commandInputStream);
 				serverAnswer = answer.getCommand().get(0);
 				if (serverAnswer.equals("READY")) {
 					int bytesToSend = chunkSize - 17 - filename.length();
@@ -138,7 +137,7 @@ public class Client {
 						position += read;
 						commandOutputStream.writeUTF(String.valueOf(chunkNumber));
 						commandOutputStream.flush();
-						answer = commandReceive();
+						answer = commandReceive(commandInputStream);
 						serverAnswer = answer.getCommand().get(0);
 						if (serverAnswer.equals("ERROR")) {
 							System.out.println("Receiving file error");
@@ -149,7 +148,7 @@ public class Client {
 					fis.close();
 					commandOutputStream.writeUTF("uploaddone");
 					commandOutputStream.flush();
-					answer = commandReceive();
+					answer = commandReceive(commandInputStream);
 					serverAnswer = answer.getCommand().get(0);
 					System.out.println(serverAnswer);
 					return serverAnswer;
@@ -177,7 +176,7 @@ public class Client {
 				commandOutputStream.writeUTF("download " + filename);
 				commandOutputStream.flush();
 
-				Command answer = commandReceive();
+				Command answer = commandReceive(commandInputStream);
 				serverAnswer = answer.getCommand().get(0);
 				System.out.println(serverAnswer);
 
@@ -191,7 +190,7 @@ public class Client {
 						raf.write(chunk.getBuffer(), 0, chunk.getSize());	//и запись их в файл
 						last = chunk.isLast();
 
-						answer = commandReceive();
+						answer = commandReceive(commandInputStream);
 						serverAnswer = answer.getCommand().get(0);
 						System.out.println(serverAnswer);
 					}
@@ -217,7 +216,7 @@ public class Client {
 			commandOutputStream.writeUTF("rm " + filename);
 			commandOutputStream.flush();
 
-			Command answer = commandReceive();
+			Command answer = commandReceive(commandInputStream);
 
 			return answer.getCommand().get(0);
 		} catch (IOException e) {
@@ -243,7 +242,7 @@ public class Client {
 		try {
 			commandOutputStream.writeUTF("ls");
 			commandOutputStream.flush();
-			Command answer = commandReceive();
+			Command answer = commandReceive(commandInputStream);
 
 			return new ArrayList<>(answer.getCommand());
 		} catch (IOException e) {
@@ -277,7 +276,7 @@ public class Client {
 		try {
 			commandOutputStream.writeUTF("mkdir " + dirName);
 
-			Command answer = commandReceive();
+			Command answer = commandReceive(commandInputStream);
 
 			if (answer.getCommand().get(0).equals("OK")) {
 				return 1;
@@ -297,7 +296,7 @@ public class Client {
 		try {
 			commandOutputStream.writeUTF("cd " + dirName);
 
-			Command answer = commandReceive();
+			Command answer = commandReceive(commandInputStream);
 
 			if (answer.getCommand().get(0).equals("OK")) {
 				return 1;
@@ -319,7 +318,7 @@ public class Client {
 			commandOutputStream.writeUTF("auth " + name + " " + password);
 			commandOutputStream.flush();
 
-			Command answer = commandReceive();
+			Command answer = commandReceive(commandInputStream);
 
 			if (answer.getCommand().get(0).equals("DECLINE")) {
 				return 0;
@@ -353,7 +352,7 @@ public class Client {
 			commandOutputStream.writeUTF("create " + name + " " + password);
 			commandOutputStream.flush();
 
-			Command answer = commandReceive();
+			Command answer = commandReceive(commandInputStream);
 
 			if (answer.getCommand().get(0).equals("EXISTS")) {
 				return 0;
@@ -369,20 +368,43 @@ public class Client {
 		return 0;
 	}
 
+	public int changeName (String name) {
+		try {
+			commandOutputStream.writeUTF("name " + name);
+			commandOutputStream.flush();
 
+			Command answer = commandReceive(commandInputStream);
 
-	/***
-	 * Получение команды-ответа от сервера
-	 * @return
-	 * @throws IOException
-	 */
-	private Command commandReceive () throws IOException {
-		byte[] buf = new byte[10000];
-		int num = commandInputStream.read(buf);
-		String s = new String(buf, Charset.defaultCharset()).trim();
-		System.out.println(s);
-		return new Command(s);
+			if (!answer.getCommand().get(0).equals("true")) {
+				return 0;
+			}
+			setUserName(name);
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return 1;
 	}
+
+	public int changePass (String pass) {
+		try {
+			commandOutputStream.writeUTF("pass " + pass);
+			commandOutputStream.flush();
+
+			Command answer = commandReceive(commandInputStream);
+
+			if (!answer.getCommand().get(0).equals("true")) {
+				return 0;
+			}
+			setPassword(pass);
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
+
+
 
 	public void setState(ClientState state) {
 		this.state = state;

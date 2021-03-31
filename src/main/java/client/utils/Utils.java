@@ -1,5 +1,6 @@
 package client.utils;
 
+import command.Command;
 import server.utils.FileChunk;
 
 import java.io.DataInputStream;
@@ -50,5 +51,29 @@ public class Utils {
             dataInputStream.read(trash);							//считываем
         }
         return new FileChunk(userId, size, position, isLast, filename, buf);
+    }
+
+    /***
+     * Получение команды-ответа от сервера
+     * @return
+     * @throws IOException
+     */
+    public static Command commandReceive (DataInputStream commandInputStream) throws IOException {
+        byte[] buf = new byte[10000];
+        int num = commandInputStream.read(buf);
+        String s = new String(buf, Charset.defaultCharset()).trim();
+        System.out.println(s);
+        return new Command(s);
+    }
+
+    public static void commandSend (DataOutputStream commandOutputStream, Command command) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        for (String s : command.getCommand()) {
+            sb.append(s);
+            sb.append(" ");
+        }
+        sb.deleteCharAt(sb.length() - 1);
+        commandOutputStream.writeUTF(sb.toString());
+        commandOutputStream.flush();
     }
 }

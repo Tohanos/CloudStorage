@@ -21,6 +21,7 @@ public class StateMachine{
     enum State {
         IDLE,
         WORK,
+        CHANGE_NAME_PASS,
         RECIEVING,
         RECEIVING_NEXT,
         RECEIVING_COMPLETE,
@@ -57,7 +58,6 @@ public class StateMachine{
     private String fileNameWithPath = "";
     private FileSplitter splitter;
     private MachineType machineType = MachineType.SERVER;
-
 
     private long currentTime;
 
@@ -154,12 +154,9 @@ public class StateMachine{
                             currentDir = currentDir + File.separator + user.getRootDir();
                             File file = new File(currentDir);
                             file.mkdir();
-
                             currentPhase = Phase.ACCEPT;
                         }
-
                     }
-
                     if (currentPhase == Phase.AUTHORIZE) {
                         user = null;
                         currentPhase = Phase.DECLINE;
@@ -193,8 +190,25 @@ public class StateMachine{
                     if (currentPhase == Phase.DONE) {
                         //answer.add("OK");
                     }
-
                 }
+                case CHANGE_NAME_PASS -> {
+                    if (currentPhase == Phase.INCOMING_COMMAND) {
+                        if (commands.size() > 1) {
+                            answer.add("ERROR");
+                            if (commands.get(0).equals("name")) {
+                                boolean result = UserManagement.changeUserName(commands.get(1), user);
+                                answer.add(String.valueOf(result));
+                            }
+                            if (commands.get(0).equals("pass")) {
+                                boolean result = UserManagement.changeUserPassword(commands.get(1), user);
+                                answer.add(String.valueOf(result));
+                            }
+                            currentPhase = Phase.DONE;
+                            currentState = State.WORK;
+                        }
+                    }
+                }
+
                 case WORK -> {
                     System.out.println("Current state - work");
                     switch (commands.get(0)) {
@@ -271,12 +285,14 @@ public class StateMachine{
                             currentPhase = Phase.DONE;
                             answer.add(String.valueOf(chunkSize));
                             break;
+                        case "name":
+                        case "pass":
+                            currentState = State.CHANGE_NAME_PASS;
+                            break;
                     }
                     if (currentPhase == Phase.DONE) {
                         //answer.add("OK");
                     }
-
-
                 }
 
                 case RECIEVING -> {
@@ -288,7 +304,6 @@ public class StateMachine{
                             currentState = State.WORK;
                         } else {
 //                            currentPhase = Phase.NEXT;
-
                         }
                     }
 
@@ -308,7 +323,6 @@ public class StateMachine{
                         currentPhase = Phase.DONE;
                         currentState = State.WORK;
                     }
-
                 }
 
                 case RECEIVING_NEXT -> {
@@ -375,13 +389,10 @@ public class StateMachine{
                 }
             }
 
-
             if (currentPhase == Phase.DISCONNECT) {
                 answer.add("DISCONNECT");
-
             }
         }
-
         return answer;
     }
 
