@@ -2,8 +2,6 @@ package client;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
@@ -22,7 +20,7 @@ public class ClientWindowApp {
         if (mainWindowFrame == null) {
             mainWindowFrame = new JFrame("Cloud Storage");
             mainWindowFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            mainWindowFrame.setSize(400, 300);
+            mainWindowFrame.setSize(500, 300);
             mainWindowFrame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent e) {
@@ -30,9 +28,6 @@ public class ClientWindowApp {
                     super.windowClosing(e);
                 }
             });
-
-            //JTextArea ta = new JTextArea();
-
 
             JList<String> serverFilesList = new JList<>(client.getFileList().toArray(new String[0]));
             JList<String> clientFilesList = new JList<>(client.getLocalFileList().toArray(new String[0]));
@@ -48,6 +43,7 @@ public class ClientWindowApp {
             JButton removeButton = new JButton("Remove");
             JButton createDirButton = new JButton("Create Dir");
             JButton enterDirButton = new JButton("Enter Dir");
+            JButton changeNamePassButton = new JButton("Change name/password");
 
             JPanel filesPanel = new JPanel();
             JPanel buttonPanel = new JPanel();
@@ -57,6 +53,7 @@ public class ClientWindowApp {
             buttonPanel.add(removeButton, FlowLayout.LEFT);
             buttonPanel.add(downloadButton, FlowLayout.LEFT);
             buttonPanel.add(uploadButton, FlowLayout.LEFT);
+            buttonPanel.add(changeNamePassButton, FlowLayout.LEFT);
 
 
             filesPanel.add(serverFilesPane, BoxLayout.X_AXIS);
@@ -80,8 +77,6 @@ public class ClientWindowApp {
             mainWindowFrame.getContentPane().add(filesPanel, BorderLayout.CENTER);
 
             mainWindowFrame.getContentPane().add(BorderLayout.SOUTH, controlPanel);
-
-            mainWindowFrame.setVisible(true);
 
             uploadButton.addActionListener(a -> {
                 if (clientFilesList.getSelectedValue() != null) {
@@ -126,15 +121,14 @@ public class ClientWindowApp {
                 }
             });
 
-            clientFilesList.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-
-
-                }
+            changeNamePassButton.addActionListener(a -> {
+                client.setState(Client.ClientState.CHANGE_NAME_PASS);
+                mainWindowFrame.setVisible(false);
             });
+
         }
 
+        if (!mainWindowFrame.isVisible()) mainWindowFrame.setVisible(true);
 
     }
 }

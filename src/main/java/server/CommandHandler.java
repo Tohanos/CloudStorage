@@ -26,9 +26,14 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) {
+    public void channelInactive(ChannelHandlerContext ctx) throws IOException {
         System.out.println("Client " + ctx.channel().remoteAddress().toString() + " disconnected");
-        serverState.setPhase(StateMachine.Phase.DISCONNECT);
+        StateMachinesPool.remove(serverState);
+        serverState.setPhase(StateMachine.Phase.INCOMING_COMMAND);
+        Command command = new Command("exit");
+        List<String> answer = serverState.parseCommand(command.getCommand());
+        System.out.println(answer);
+        serverState = null;
     }
 
     @Override

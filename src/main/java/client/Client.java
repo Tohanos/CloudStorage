@@ -404,8 +404,6 @@ public class Client {
 		return 1;
 	}
 
-
-
 	public void setState(ClientState state) {
 		this.state = state;
 	}

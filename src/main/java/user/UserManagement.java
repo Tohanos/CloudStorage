@@ -104,7 +104,7 @@ public class UserManagement {
                 conn.setAutoCommit(true);
                 PreparedStatement pst = conn.prepareStatement(CHANGE_NAME);
                 pst.setString(1, name);
-                pst.setString(2, String.valueOf(user.getUserId()));
+                pst.setInt(2, user.getUserId());;
                 int rows = pst.executeUpdate();
                 if (rows > 0) {
                     System.out.print("user " + user.getName() + " changed name to ");
@@ -129,7 +129,7 @@ public class UserManagement {
             conn.setAutoCommit(true);
             PreparedStatement pst = conn.prepareStatement(CHANGE_PASSWORD);
             pst.setString(1, password);
-            pst.setString(2, String.valueOf(user.getUserId()));
+            pst.setInt(2, user.getUserId());
             int rows = pst.executeUpdate();
             if (rows > 0) {
                 user.setPassword(password);
@@ -179,12 +179,13 @@ public class UserManagement {
         return null;
     }
 
-    public static void main(String[] args) throws SQLException {
+    public static void main(String[] args) throws SQLException {    //тестируем
 
         //UserManagement.readAllUsers();
-        UserManagement.createNewUser("Petya", "3333", "/User3");
-        System.out.println(UserManagement.checkPassword("Petya", "2222"));
-        System.out.println(UserManagement.checkPassword("Petya", "3333"));
+        User user = UserManagement.createNewUser("Lola", "5555", "Lola");
+        System.out.println(UserManagement.checkPassword("Sasha", "2222"));
+        System.out.println(UserManagement.checkPassword("Sasha", "3333"));
+        changeUserName("Vova", user);
 
     }
 

@@ -4,7 +4,6 @@ import user.UserManagement;
 import server.utils.FileChunk;
 import server.utils.FileSplitter;
 import server.utils.MachineType;
-import io.netty.buffer.ByteBuf;
 import user.User;
 import io.netty.channel.Channel;
 
@@ -18,15 +17,16 @@ import java.util.List;
  * Здесь выполняется вся логика сервера
  */
 public class StateMachine{
-    enum State {
-        IDLE,
+    enum State {        //состояние
+        IDLE,           //начальное
         WORK,
         CHANGE_NAME_PASS,
-        RECIEVING,
+        RECEIVING,
         RECEIVING_NEXT,
         RECEIVING_COMPLETE,
         RECEIVING_ERROR,
-        TRANSMITTING
+        TRANSMITTING,
+        CLOSE
     }
 
     enum Phase {
@@ -122,10 +122,25 @@ public class StateMachine{
     /***
      * Обработка команд клиента - реализация конечного автомата
      * Исходное состояние сервера - IDLE
-     * При
-     *
-     *
-     *
+     * Вызов метода parseCommand происходит в момент прихода команды от клиента
+     * Внутри метода в зависимости от пришедшей команды происходит переключение состояния.
+     * В состоянии IDLE команды auth и create отвечают за авторизации и создание пользователя соответственно, при этом
+     * у клиента отображается окно ввода имени пользователя и пароля.
+     * Обработка команды auth при условии совпадения имени пользователя и пароля приводит к переключению в состояние
+     * WORK.
+     * В состоянии WORK происходит обработка команд exit, upload, uploaddone, download, mkdir, ls, cd, rm, chunksize, name и pass
+     * Команда exit переводит состояние в DISCONNECT
+     * Команда upload переводит состояние в RECEIVING
+     * Команда download переводит состояние в TRANSMITTING
+     * Команды name и pass переводят состояние в CHANGE_NAME_PASS, в котором на клиенте тображается форма ввода новых имени
+     * пользователя и пароля для текущего пользователя
+     * Остальные команды, полученные в состоянии WORK, не меняют состояния
+     * В состоянии RECEIVING выполняется обработка приходящих файловых отрезков, получение очередного файлового отрезка
+     * переводит состояние в RECEIVING_NEXT, при получении последнего файлового отрезка происходит переход состояния в
+     * RECEIVING_COMPLETE, если отрезок не последний, то возврат в состояние RECEIVING. При возникновении ошибки при передаче
+     * отрезка файла состояние переходит в RECEIVING_ERROR.
+     * В состоянии TRANSMITTING выполняется разделение файла на отрезки и их последующая передача клиенту.
+     * В состоянии CLOSE выполняются процедуры завершения работы текущей машины состояний (StateMachine)
      *
      * @param commands
      * @return
@@ -142,8 +157,8 @@ public class StateMachine{
                 case IDLE -> {
                     System.out.println("Current state - idle");
                     if (currentPhase == Phase.CONNECT || currentPhase == Phase.INCOMING_COMMAND) {
-                        if (commands.get(0).equals("auth")) currentPhase = Phase.AUTHORIZE;
-                        if (commands.get(0).equals("create")) currentPhase = Phase.CREATE_USER;
+                        if (commands.get(0).equals("auth")) currentPhase = Phase.AUTHORIZE;         //команда авторизаци
+                        if (commands.get(0).equals("create")) currentPhase = Phase.CREATE_USER;     //команда создания нового пользователя
                     }
                     if (currentPhase == Phase.CREATE_USER) {
                         user = UserManagement.createNewUser(commands.get(1), commands.get(2), commands.get(1));
@@ -177,8 +192,8 @@ public class StateMachine{
                     if (currentPhase == Phase.ACCEPT) {
                         currentPhase = Phase.DONE;
                         if (user != null) {
-                            answer.add(String.valueOf(user.getUserId()));
-                            currentDir = currentDir + File.separator + user.getRootDir();
+                            answer.add(String.valueOf(user.getUserId()));                   //возвращаем клиенту ID пользователя
+                            currentDir = currentDir + File.separator + user.getRootDir();   //задаём директорию пользователя
                             currentState = State.WORK;
                         }
                     }
@@ -187,20 +202,16 @@ public class StateMachine{
                         currentPhase = Phase.DONE;
                     }
 
-                    if (currentPhase == Phase.DONE) {
-                        //answer.add("OK");
-                    }
                 }
                 case CHANGE_NAME_PASS -> {
                     if (currentPhase == Phase.INCOMING_COMMAND) {
                         if (commands.size() > 1) {
-                            answer.add("ERROR");
-                            if (commands.get(0).equals("name")) {
+                            if (commands.get(0).equals("name")) {                                           //команда смены имени
                                 boolean result = UserManagement.changeUserName(commands.get(1), user);
                                 answer.add(String.valueOf(result));
                             }
                             if (commands.get(0).equals("pass")) {
-                                boolean result = UserManagement.changeUserPassword(commands.get(1), user);
+                                boolean result = UserManagement.changeUserPassword(commands.get(1), user);  //команда смены пароля
                                 answer.add(String.valueOf(result));
                             }
                             currentPhase = Phase.DONE;
@@ -212,36 +223,36 @@ public class StateMachine{
                 case WORK -> {
                     System.out.println("Current state - work");
                     switch (commands.get(0)) {
-                        case "exit":
+                        case "exit":                                            //команда на выход
                             currentPhase = Phase.DISCONNECT;
                             break;
-                        case "upload":
+                        case "upload":                                          //команда на загрузку файла на сервер
                             if (commands.size() > 1) {
                                 fileNameWithPath = currentDir + File.separator + fileName;
-                                currentState = State.RECIEVING;
+                                currentState = State.RECEIVING;
                                 currentTime = System.currentTimeMillis();
                                 answer.add("READY");
                                 currentPhase = Phase.DONE;
                             }
                             break;
-                        case "uploaddone":
+                        case "uploaddone":                                      //команда завершения загрузки файла на сервер
                             answer.add("OK");
                             currentPhase = Phase.DONE;
                             break;
-                        case "download":
+                        case "download":                                        //команда на скачивание файла с сервера
                             currentState = State.TRANSMITTING;
                             if (commands.size() > 1) fileName = commands.get(1);
                             answer.add("READY");
                             currentPhase = Phase.DONE;
                             break;
-                        case "mkdir":
+                        case "mkdir":                                           //команда на создание директории
                             if (commands.size() > 1) {
                                 File file = new File(currentDir + File.separator + commands.get(1));
                                 file.mkdir();
                             }
-                            commands.set(0, "ls");
+                            commands.set(0, "ls");                              //команда просмотра содержимого директории
                             break;
-                        case "rm":
+                        case "rm":                                              //команда удаления файла/директории
                             if (commands.size() > 1) {
                                 File file = new File(currentDir + File.separator + commands.get(1));
                                 file.delete();
@@ -249,7 +260,7 @@ public class StateMachine{
                             answer.add("DONE");
                             currentPhase = Phase.DONE;
                             break;
-                        case "cd":
+                        case "cd":                                              //команда смены директории
                             if (commands.size() > 1) {
                                 if (commands.get(1).equals("..")) {
                                     File file = new File(currentDir);
@@ -266,7 +277,7 @@ public class StateMachine{
                             answer.add("DONE");
                             currentPhase = Phase.DONE;
                             break;
-                        case "ls":
+                        case "ls":                                              //команда отображения содержимого директории
                             try {
                                 File file = new File(currentDir + File.separator);
                                 String[] fileNames = file.list();
@@ -281,29 +292,24 @@ public class StateMachine{
                             }
                             currentPhase = Phase.DONE;
                             break;
-                        case "chunksize":
+                        case "chunksize":                                       //команда запроса размера
                             currentPhase = Phase.DONE;
                             answer.add(String.valueOf(chunkSize));
                             break;
-                        case "name":
-                        case "pass":
+                        case "name":                                            //команда смены имени пользователя
+                        case "pass":                                            //команда смены пароля
                             currentState = State.CHANGE_NAME_PASS;
                             break;
                     }
-                    if (currentPhase == Phase.DONE) {
-                        //answer.add("OK");
-                    }
                 }
 
-                case RECIEVING -> {
+                case RECEIVING -> {
                     System.out.println("Current state - recieving");
                     if (currentPhase == Phase.INCOMING_COMMAND) {
-                        if (commands.get(0).equals("uploaddone")) {
+                        if (commands.get(0).equals("uploaddone")) {     //команда завершения загрузки файла на сервер
                             answer.add("DONE");
                             currentPhase = Phase.DONE;
                             currentState = State.WORK;
-                        } else {
-//                            currentPhase = Phase.NEXT;
                         }
                     }
 
@@ -328,14 +334,14 @@ public class StateMachine{
                 case RECEIVING_NEXT -> {
                     System.out.println("Current state - recieving_next");
                     if (currentPhase == Phase.INCOMING_COMMAND) {
-                        if (commands.get(0).equals("uploaddone")) {
+                        if (commands.get(0).equals("uploaddone")) {         //команда завершения загрузки файла на сервер
                             answer.add("DONE");
                             currentPhase = Phase.DONE;
                             currentState = State.WORK;
                         } else {
                             answer.add("NEXT");
                             currentPhase = Phase.DONE;
-                            currentState = State.RECIEVING;
+                            currentState = State.RECEIVING;
                         }
                     }
                 }
@@ -373,7 +379,7 @@ public class StateMachine{
                                     chunkSize,
                                     user.getUserId());
                             chunk = splitter.getNext();
-                            sendFileChunk(chunk);
+                            chunk.sendFileChunk(dataChannel, chunkSize);
                             if (chunk.isLast()) {
                                 currentState = State.WORK;
                                 splitter = null;
@@ -383,34 +389,17 @@ public class StateMachine{
                         }
                         currentPhase = Phase.DONE;
                     }
-                    if (currentPhase == Phase.DONE) {
-
-                    }
                 }
             }
 
             if (currentPhase == Phase.DISCONNECT) {
                 answer.add("DISCONNECT");
+                currentPhase = Phase.DONE;
+                currentState = State.CLOSE;
             }
         }
         return answer;
     }
 
-    /***
-     * Отправка файлового отрезка клиенту
-     * @param chunk
-     */
-    private void sendFileChunk (FileChunk chunk) {
-        ByteBuf buf = dataChannel.alloc().buffer(chunkSize);
-        byte[] bytes = {67, 72};
-        buf.writeBytes(bytes);
-        buf.writeInt(chunk.getUserId());
-        buf.writeInt(chunk.getSize());
-        buf.writeInt(chunk.getPosition());
-        buf.writeBoolean(chunk.isLast());
-        buf.writeShort((short)chunk.getFilename().length());
-        buf.writeBytes(chunk.getFilename().getBytes());
-        buf.writeBytes(chunk.getBuffer());
-        dataChannel.writeAndFlush(buf);
-    }
+
 }

@@ -35,9 +35,6 @@ public class ChangeNamePass {
             JTextField newNameField = new JTextField("", 15);
             JPasswordField newPassField = new JPasswordField("", 15);
 
-//			newNameField.setSize(100, 15);
-//			newPassField.setSize(100, 15);
-
             SpringLayout layout = new SpringLayout();
             mainPanel.setLayout(layout);
             mainPanel.add(newNameField);
@@ -46,13 +43,13 @@ public class ChangeNamePass {
             mainPanel.add(newPasswordText);
 
             layout.getConstraints(newNameText).setX(Spring.constant(5));
-            layout.getConstraints(newNameText).setY(Spring.constant(5));
+            layout.getConstraints(newNameText).setY(Spring.constant(35));
             layout.getConstraints(newNameField).setX(Spring.constant(105));
-            layout.getConstraints(newNameField).setY(Spring.constant(5));
+            layout.getConstraints(newNameField).setY(Spring.constant(35));
             layout.getConstraints(newPasswordText).setX(Spring.constant(5));
-            layout.getConstraints(newPasswordText).setY(Spring.constant(25));
+            layout.getConstraints(newPasswordText).setY(Spring.constant(65));
             layout.getConstraints(newPassField).setX(Spring.constant(105));
-            layout.getConstraints(newPassField).setY(Spring.constant(25));
+            layout.getConstraints(newPassField).setY(Spring.constant(65));
 
             namePassWindowFrame.getContentPane().add(BorderLayout.NORTH, message);
             namePassWindowFrame.getContentPane().add(BorderLayout.CENTER, mainPanel);
@@ -76,8 +73,7 @@ public class ChangeNamePass {
                 } else {
                     int result = client.changeName(name);
                     if (result != 0) {
-                        namePassWindowFrame.setVisible(false);
-                        namePassWindowFrame.dispose();
+                        message.setText("User name changed to " + name + " successfully");
                     } else {
                         message.setText("User with this name exists!!!");
                     }
@@ -92,20 +88,15 @@ public class ChangeNamePass {
                 } else {
                     int result = client.changePass(password);
                     if (result != 0) {
-                        namePassWindowFrame.setVisible(false);
-                        namePassWindowFrame.dispose();
-                    }
-                    if (result == 0) {
-                        message.setText("Invalid username or password!!!");
-                    }
-                    if (result == -1) {
-                        message.setText("User is already logged in!!!");
+                        message.setText("User password changed successfully");
+                    } else  {
+                        message.setText("Invalid password!!!");
                     }
                 }
             });
 
             exitButton.addActionListener(a -> {
-                client.setState(Client.ClientState.CLOSE);
+                client.setState(Client.ClientState.WORK);
                 namePassWindowFrame.dispose();
             });
         }
