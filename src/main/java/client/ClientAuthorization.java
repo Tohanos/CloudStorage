@@ -20,7 +20,7 @@ public class ClientAuthorization {
         if (authWindowFrame == null) {
             authWindowFrame = new JFrame("Cloud Storage Authorization");
             authWindowFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            authWindowFrame.setSize(400, 300);
+            authWindowFrame.setSize(400, 300);  //<-Magic number
             authWindowFrame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent e) {
@@ -33,8 +33,8 @@ public class ClientAuthorization {
             JPanel mainPanel = new JPanel();
             JLabel loginText = new JLabel("Login:");
             JLabel passwordText = new JLabel("Password:");
-            JTextField loginField = new JTextField("", 15);
-            JPasswordField passwordField = new JPasswordField("", 15);
+            JTextField loginField = new JTextField("", 15); //<-Magic number
+            JPasswordField passwordField = new JPasswordField("", 15);  //<-Magic number
 
             SpringLayout layout = new SpringLayout();
             mainPanel.setLayout(layout);
@@ -43,7 +43,7 @@ public class ClientAuthorization {
             mainPanel.add(passwordField);
             mainPanel.add(passwordText);
 
-            layout.getConstraints(loginText).setX(Spring.constant(5));
+            layout.getConstraints(loginText).setX(Spring.constant(5));  //<-Magic numbers
             layout.getConstraints(loginText).setY(Spring.constant(5));
             layout.getConstraints(loginField).setX(Spring.constant(105));
             layout.getConstraints(loginField).setY(Spring.constant(5));

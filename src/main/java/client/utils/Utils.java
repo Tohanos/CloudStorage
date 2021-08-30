@@ -15,7 +15,7 @@ public class Utils {
      * @param dataOutputStream
      * @throws IOException
      */
-    public static void sendFileChunk(FileChunk chunk, DataOutputStream dataOutputStream) throws IOException {
+    public static void sendFileChunk(FileChunk chunk, DataOutputStream dataOutputStream) throws IOException {   //<- Нарушение DRY, т.к. функционал уже реализован для серверной части
         dataOutputStream.writeBytes("CH");
         dataOutputStream.writeInt(chunk.getUserId());
         dataOutputStream.writeInt(chunk.getSize());
@@ -31,7 +31,7 @@ public class Utils {
      * @return	сам отрезок
      * @throws IOException
      */
-    public static FileChunk recieveFileChunk (DataInputStream dataInputStream) throws IOException {
+    public static FileChunk recieveFileChunk (DataInputStream dataInputStream) throws IOException { //<- Нарушение DRY, т.к. функционал уже реализован для серверной части
 
         String header = new String(dataInputStream.readNBytes(2), Charset.defaultCharset());
         if (!header.equals("CH")) return null;															//если заголовок из стрима не подходит - не считываем дальше, но можем получить NullPointerException

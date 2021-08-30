@@ -31,7 +31,7 @@ public class DataHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {       //Спагетти код
         ByteBuf m = (ByteBuf) msg;      //Собственно ByteBuf
         buf.writeBytes(m);              //копируем (этот код - кусок из туториала)
         m.release();                    //сбрасываем буфер обработчика

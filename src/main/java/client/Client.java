@@ -240,7 +240,7 @@ public class Client {
 	 */
 	public ArrayList<String> getFileList () {
 		try {
-			commandOutputStream.writeUTF("ls");
+			commandOutputStream.writeUTF("ls");	//<-Magic Number
 			commandOutputStream.flush();
 			Command answer = commandReceive(commandInputStream);
 
@@ -278,7 +278,7 @@ public class Client {
 
 			Command answer = commandReceive(commandInputStream);
 
-			if (answer.getCommand().get(0).equals("OK")) {
+			if (answer.getCommand().get(0).equals("OK")) {	//<-Magic Number
 				return 1;
 			}
 		} catch (IOException e) {
@@ -294,11 +294,11 @@ public class Client {
 	 */
 	public int changeDir (String dirName) {
 		try {
-			commandOutputStream.writeUTF("cd " + dirName);
+			commandOutputStream.writeUTF("cd " + dirName);	//<-Magic Number
 
 			Command answer = commandReceive(commandInputStream);
 
-			if (answer.getCommand().get(0).equals("OK")) {
+			if (answer.getCommand().get(0).equals("OK")) {	//<-Magic Number
 				return 1;
 			}
 		} catch (IOException e) {
@@ -315,15 +315,15 @@ public class Client {
 	 */
 	public int authorize (String name, String password) {
 		try {
-			commandOutputStream.writeUTF("auth " + name + " " + password);
+			commandOutputStream.writeUTF("auth " + name + " " + password);	//<-Magic Number
 			commandOutputStream.flush();
 
 			Command answer = commandReceive(commandInputStream);
 
-			if (answer.getCommand().get(0).equals("DECLINE")) {
+			if (answer.getCommand().get(0).equals("DECLINE")) {	//<-Magic Number
 				return 0;
 			}
-			if (answer.getCommand().get(0).equals("EXIST")) {
+			if (answer.getCommand().get(0).equals("EXIST")) {	//<-Magic Number
 				return -1;
 			}
 			setUserName(name);
@@ -349,12 +349,12 @@ public class Client {
 	 */
 	public int createNewUser (String name, String password) {
 		try {
-			commandOutputStream.writeUTF("create " + name + " " + password);
+			commandOutputStream.writeUTF("create " + name + " " + password);	//<-Magic Number
 			commandOutputStream.flush();
 
 			Command answer = commandReceive(commandInputStream);
 
-			if (answer.getCommand().get(0).equals("EXISTS")) {
+			if (answer.getCommand().get(0).equals("EXISTS")) {	//<-Magic Number
 				return 0;
 			}
 			setUserName(name);
@@ -370,12 +370,12 @@ public class Client {
 
 	public int changeName (String name) {
 		try {
-			commandOutputStream.writeUTF("name " + name);
+			commandOutputStream.writeUTF("name " + name);	//<-Magic Number
 			commandOutputStream.flush();
 
 			Command answer = commandReceive(commandInputStream);
 
-			if (!answer.getCommand().get(0).equals("true")) {
+			if (!answer.getCommand().get(0).equals("true")) {	//<-Magic Number
 				return 0;
 			}
 			setUserName(name);
@@ -388,12 +388,12 @@ public class Client {
 
 	public int changePass (String pass) {
 		try {
-			commandOutputStream.writeUTF("pass " + pass);
+			commandOutputStream.writeUTF("pass " + pass);	//<-Magic Number
 			commandOutputStream.flush();
 
 			Command answer = commandReceive(commandInputStream);
 
-			if (!answer.getCommand().get(0).equals("true")) {
+			if (!answer.getCommand().get(0).equals("true")) {	//<-Magic Number
 				return 0;
 			}
 			setPassword(pass);

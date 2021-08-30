@@ -20,7 +20,7 @@ public class ClientWindowApp {
         if (mainWindowFrame == null) {
             mainWindowFrame = new JFrame("Cloud Storage");
             mainWindowFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            mainWindowFrame.setSize(500, 300);
+            mainWindowFrame.setSize(500, 300);  //<-Magic number
             mainWindowFrame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent e) {
@@ -36,7 +36,7 @@ public class ClientWindowApp {
             JScrollPane clientFilesPane = new JScrollPane(clientFilesList);
 
             JTextField createDirField = new JTextField();
-            createDirField.setColumns(10);
+            createDirField.setColumns(10);  //<-Magic number
 
             JButton uploadButton = new JButton("Upload");
             JButton downloadButton = new JButton("Download");
@@ -68,7 +68,7 @@ public class ClientWindowApp {
             controlPanel.add(createDirPanel);
             controlPanel.add(buttonPanel);
 
-            serverFilesPane.setPreferredSize(new Dimension(150, 200));
+            serverFilesPane.setPreferredSize(new Dimension(150, 200));  //<-Magic number
             clientFilesPane.setPreferredSize(new Dimension(150, 200));
 
             serverFilesList.addListSelectionListener(e -> clientFilesList.clearSelection());

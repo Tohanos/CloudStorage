@@ -24,7 +24,7 @@ public class Server {
 
 		UserManagement.readAllUsers();
 
-		try {
+		try {	//<- Copy-paste driven development
 
 			//Add bootstrap for command transmission
 			ServerBootstrap serverBootstrap = new ServerBootstrap();
@@ -63,6 +63,6 @@ public class Server {
 
 
 	public static void main(String[] args) throws InterruptedException {
-		new Server(1234, 1235).run();
+		new Server(1234, 1235).run();	//<-Magic number
 	}
 }
