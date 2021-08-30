@@ -19,7 +19,7 @@ public class ChangeNamePass {
         if (namePassWindowFrame == null) {
             namePassWindowFrame = new JFrame("Cloud Storage change name and password");
             namePassWindowFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            namePassWindowFrame.setSize(400, 300);
+            namePassWindowFrame.setSize(400, 300);  //<-Magic number
             namePassWindowFrame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent e) {
@@ -32,8 +32,8 @@ public class ChangeNamePass {
             JPanel mainPanel = new JPanel();
             JLabel newNameText = new JLabel("New name:");
             JLabel newPasswordText = new JLabel("New Password:");
-            JTextField newNameField = new JTextField("", 15);
-            JPasswordField newPassField = new JPasswordField("", 15);
+            JTextField newNameField = new JTextField("", 15);   //<-Magic number
+            JPasswordField newPassField = new JPasswordField("", 15);   //<-Magic number
 
             SpringLayout layout = new SpringLayout();
             mainPanel.setLayout(layout);
@@ -42,7 +42,7 @@ public class ChangeNamePass {
             mainPanel.add(newPassField);
             mainPanel.add(newPasswordText);
 
-            layout.getConstraints(newNameText).setX(Spring.constant(5));
+            layout.getConstraints(newNameText).setX(Spring.constant(5));    //<-Magic number
             layout.getConstraints(newNameText).setY(Spring.constant(35));
             layout.getConstraints(newNameField).setX(Spring.constant(105));
             layout.getConstraints(newNameField).setY(Spring.constant(35));

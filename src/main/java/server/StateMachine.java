@@ -16,7 +16,7 @@ import java.util.List;
 /***
  * Здесь выполняется вся логика сервера
  */
-public class StateMachine{
+public class StateMachine{  //<- God object
     enum State {        //состояние
         IDLE,           //начальное
         WORK,
@@ -163,7 +163,7 @@ public class StateMachine{
                     if (currentPhase == Phase.CREATE_USER) {
                         user = UserManagement.createNewUser(commands.get(1), commands.get(2), commands.get(1));
                         if (user == null) {
-                            answer.add("EXISTS");
+                            answer.add("EXISTS");   //<-Magic number
                             currentPhase = Phase.DONE;
                         } else {
                             currentDir = currentDir + File.separator + user.getRootDir();
@@ -198,7 +198,7 @@ public class StateMachine{
                         }
                     }
                     if (currentPhase == Phase.DECLINE) {
-                        answer.add("DECLINE");
+                        answer.add("DECLINE");  //<-Magic number
                         currentPhase = Phase.DONE;
                     }
 
@@ -220,7 +220,7 @@ public class StateMachine{
                     }
                 }
 
-                case WORK -> {
+                case WORK -> {  //Целый ворох Magic Number
                     System.out.println("Current state - work");
                     switch (commands.get(0)) {
                         case "exit":                                            //команда на выход

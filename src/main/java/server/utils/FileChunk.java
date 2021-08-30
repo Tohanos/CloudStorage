@@ -5,7 +5,7 @@ import io.netty.channel.Channel;
 
 import java.io.Serializable;
 
-public class FileChunk implements Serializable {
+public class FileChunk implements Serializable {    //<-Reinventing the square wheel
     char[] header = {67, 72}; //CH
     int userId;         //ИД пользователя
     int size;           //размер отрезка
